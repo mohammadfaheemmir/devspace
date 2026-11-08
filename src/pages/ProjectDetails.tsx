@@ -34,6 +34,7 @@ import { useTaskComments } from '../hooks/useTaskComments'
 import { useToast } from '../context/useToast'
 
 import TaskKanbanBoard from '../components/project/TaskKanbanBoard'
+import TaskCalendar from '../components/project/TaskCalendar'
 import TaskReminders from '../components/project/TaskReminders'
 import ProjectActivityFeed from '../components/project/ProjectActivityFeed'
 import ProjectSettingsPanel from '../components/project/ProjectSettingsPanel'
@@ -48,6 +49,14 @@ import {
     DEFAULT_TASK_FILTERS,
     filterAndSortTasks,
 } from '../components/project/taskUtils'
+
+type TaskView = 'list' | 'board' | 'calendar'
+
+const TASK_VIEWS: { id: TaskView; label: string }[] = [
+    { id: 'list', label: 'List View' },
+    { id: 'board', label: 'Board View' },
+    { id: 'calendar', label: 'Calendar' },
+]
 
 // projectId comes from the route (see App.tsx), which only renders this page
 // when the URL contains one.
@@ -69,7 +78,7 @@ function ProjectDetails({ projectId }: { projectId: string }) {
     const [showTaskForm, setShowTaskForm] = useState(false)
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
     const [updatingTaskIds, setUpdatingTaskIds] = useState<string[]>([])
-    const [taskView, setTaskView] = useState('list')
+    const [taskView, setTaskView] = useState<TaskView>('list')
 
     // Task search, filters and sorting.
     const [filters, setFilters] = useState(DEFAULT_TASK_FILTERS)
@@ -644,31 +653,23 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                     </span>
                 </div>
 
-                {/* Switch between list and Kanban board views */}
+                {/* Switch between list, Kanban board and calendar views */}
                 <div className="mb-5 flex justify-end">
-                    <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-1">
-                        <button
-                            type="button"
-                            onClick={() => setTaskView('list')}
-                            aria-pressed={taskView === 'list'}
-                            className={`rounded-md px-4 py-2 text-sm transition ${taskView === 'list'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white'
-                                }`}
-                        >
-                            List View
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setTaskView('board')}
-                            aria-pressed={taskView === 'board'}
-                            className={`rounded-md px-4 py-2 text-sm transition ${taskView === 'board'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white'
-                                }`}
-                        >
-                            Board View
-                        </button>
+                    <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-1" role="group" aria-label="Task view">
+                        {TASK_VIEWS.map((view) => (
+                            <button
+                                key={view.id}
+                                type="button"
+                                onClick={() => setTaskView(view.id)}
+                                aria-pressed={taskView === view.id}
+                                className={`rounded-md px-3 py-2 text-sm transition sm:px-4 ${taskView === view.id
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-slate-400 hover:text-white'
+                                    }`}
+                            >
+                                {view.label}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
@@ -682,7 +683,12 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                 />
 
                 {/* Task list or Kanban board */}
-                {taskView === 'board' ? (
+                {taskView === 'calendar' ? (
+                    <TaskCalendar
+                        tasks={filteredTasks}
+                        onEdit={(task) => setEditingTaskId(task.id)}
+                    />
+                ) : taskView === 'board' ? (
                     <TaskKanbanBoard
                         tasks={filteredTasks}
                         members={members}
