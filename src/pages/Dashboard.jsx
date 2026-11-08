@@ -30,6 +30,7 @@ import ProjectCard from '../components/dashboard/ProjectCard'
 import {
     getMyInvitations,
     acceptProjectInvitation,
+    declineProjectInvitation,
 } from '../lib/invitationService'
 
 import {
@@ -74,6 +75,7 @@ function Dashboard() {
     const [loading, setLoading] = useState(true)
     const [invitationLoading, setInvitationLoading] = useState(true)
     const [acceptingInvitation, setAcceptingInvitation] = useState(null)
+    const [decliningInvitation, setDecliningInvitation] = useState(null)
 
     const [creating, setCreating] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -346,6 +348,37 @@ function Dashboard() {
     }
 
     // Accept an invitation
+    // Decline an invitation (after confirmation) and remove it from the list
+    const handleDeclineInvitation = async (invitation) => {
+        const confirmed = window.confirm(
+            `Decline the invitation to "${invitation.project_name}"?`
+        )
+
+        if (!confirmed) return
+
+        setInvitationError('')
+        setDecliningInvitation(invitation.invitation_id)
+
+        try {
+            await declineProjectInvitation(invitation.invitation_id)
+
+            setInvitations((previous) =>
+                previous.filter(
+                    (item) => item.invitation_id !== invitation.invitation_id
+                )
+            )
+
+            toast.success(`Declined the invitation to "${invitation.project_name}".`)
+        } catch (err) {
+            console.error('Decline invitation failed:', err)
+            setInvitationError(
+                err.message || 'Unable to decline this invitation.'
+            )
+        } finally {
+            setDecliningInvitation(null)
+        }
+    }
+
     const handleAcceptInvitation = async (invitation) => {
         setInvitationError('')
         setAcceptingInvitation(invitation.invitation_id)
@@ -832,19 +865,39 @@ function Dashboard() {
 
                                     </div>
 
-                                    <button
-                                        onClick={() => handleAcceptInvitation(invitation)}
-                                        disabled={
-                                            acceptingInvitation === invitation.invitation_id
-                                        }
-                                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-500 px-4 py-3 text-sm font-semibold transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        <Check size={17} />
+                                    <div className="mt-5 flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAcceptInvitation(invitation)}
+                                            disabled={
+                                                acceptingInvitation === invitation.invitation_id ||
+                                                decliningInvitation === invitation.invitation_id
+                                            }
+                                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-500 px-4 py-3 text-sm font-semibold transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <Check size={17} />
 
-                                        {acceptingInvitation === invitation.invitation_id
-                                            ? 'Accepting...'
-                                            : 'Accept Invitation'}
-                                    </button>
+                                            {acceptingInvitation === invitation.invitation_id
+                                                ? 'Accepting...'
+                                                : 'Accept Invitation'}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeclineInvitation(invitation)}
+                                            disabled={
+                                                acceptingInvitation === invitation.invitation_id ||
+                                                decliningInvitation === invitation.invitation_id
+                                            }
+                                            className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-3 text-sm text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <X size={17} />
+
+                                            {decliningInvitation === invitation.invitation_id
+                                                ? 'Declining...'
+                                                : 'Decline'}
+                                        </button>
+                                    </div>
 
                                 </div>
                             ))}

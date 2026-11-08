@@ -101,6 +101,25 @@ export async function acceptProjectInvitation(invitationId) {
     return data
 }
 
+// Decline an invitation sent to the logged-in user
+export async function declineProjectInvitation(invitationId) {
+    await getCurrentUser()
+
+    if (!invitationId) {
+        throw new Error('Invitation ID is required.')
+    }
+
+    const { error } = await supabase.rpc('decline_project_invitation', {
+        invitation_id: invitationId,
+    })
+
+    if (error) {
+        throw new Error(error.message)
+    }
+
+    return true
+}
+
 // Cancel a project invitation
 export async function cancelProjectInvitation(invitationId) {
     await getCurrentUser()
