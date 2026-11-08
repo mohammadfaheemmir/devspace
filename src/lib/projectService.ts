@@ -1,8 +1,18 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import type { Project, ProjectRole } from '../types/app'
+
+export type ProjectInput = { name: string; description?: string | null }
+
+export type ProjectSummary = {
+    role: ProjectRole | null
+    total: number
+    done: number
+    inProgress: number
+}
 
 // Fetch projects
-export async function getProjects() {
+export async function getProjects(): Promise<Project[]> {
     await getCurrentUser()
 
     const { data, error } = await supabase
@@ -19,7 +29,7 @@ export async function getProjects() {
 }
 
 // Create project
-export async function createProject(project) {
+export async function createProject(project: ProjectInput): Promise<Project> {
     const user = await getCurrentUser()
 
     if (!project?.name?.trim()) {
@@ -53,7 +63,7 @@ export async function createProject(project) {
 }
 
 // Delete project
-export async function deleteProject(projectId) {
+export async function deleteProject(projectId: string): Promise<true> {
     await getCurrentUser()
 
     if (!projectId) {
@@ -81,7 +91,10 @@ export async function deleteProject(projectId) {
 }
 
 // Update project settings
-export async function updateProject(projectId, updates) {
+export async function updateProject(
+    projectId: string,
+    updates: ProjectInput
+): Promise<Pick<Project, 'id' | 'name' | 'description'>> {
     await getCurrentUser()
 
     if (!projectId) {
@@ -120,7 +133,7 @@ export async function updateProject(projectId, updates) {
 // For each project: the current user's role and task counts by status.
 // Two queries in total, regardless of how many projects there are.
 // Returns { [projectId]: { role, total, done, inProgress } }.
-export async function getProjectSummaries(projectIds) {
+export async function getProjectSummaries(projectIds: string[]): Promise<Record<string, ProjectSummary>> {
     const user = await getCurrentUser()
 
     if (!projectIds?.length) return {}
@@ -140,12 +153,14 @@ export async function getProjectSummaries(projectIds) {
     if (membershipResult.error) throw new Error(membershipResult.error.message)
     if (taskResult.error) throw new Error(taskResult.error.message)
 
-    const summaries = Object.fromEntries(
-        projectIds.map((id) => [id, { role: null, total: 0, done: 0, inProgress: 0 }])
+    const summaries: Record<string, ProjectSummary> = Object.fromEntries(
+        projectIds.map((id): [string, ProjectSummary] => [id, { role: null, total: 0, done: 0, inProgress: 0 }])
     )
 
     membershipResult.data.forEach(({ project_id, role }) => {
-        if (summaries[project_id]) summaries[project_id].role = role
+        const summary = summaries[project_id]
+        // role is text with a CHECK constraint (owner/admin/member).
+        if (summary) summary.role = role as ProjectRole
     })
 
     taskResult.data.forEach(({ project_id, status }) => {

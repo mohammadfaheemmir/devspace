@@ -1,8 +1,9 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import type { Notification } from '../types/app'
 
 // Fetch notifications for the logged-in user
-export async function getNotifications() {
+export async function getNotifications(): Promise<Notification[]> {
     const user = await getCurrentUser()
 
     const { data, error } = await supabase
@@ -15,11 +16,12 @@ export async function getNotifications() {
         throw new Error(error.message)
     }
 
-    return data || []
+    // The CHECK constraint on `type` guarantees a known notification type.
+    return (data || []) as Notification[]
 }
 
 // Get unread notification count
-export async function getUnreadNotificationCount() {
+export async function getUnreadNotificationCount(): Promise<number> {
     const user = await getCurrentUser()
 
     const { count, error } = await supabase
@@ -36,7 +38,7 @@ export async function getUnreadNotificationCount() {
 }
 
 // Mark a notification as read
-export async function markNotificationAsRead(notificationId) {
+export async function markNotificationAsRead(notificationId: string): Promise<true> {
     await getCurrentUser()
 
     if (!notificationId) {
@@ -56,7 +58,7 @@ export async function markNotificationAsRead(notificationId) {
 }
 
 // Mark all notifications as read
-export async function markAllNotificationsAsRead() {
+export async function markAllNotificationsAsRead(): Promise<true> {
     const user = await getCurrentUser()
 
     const { error } = await supabase

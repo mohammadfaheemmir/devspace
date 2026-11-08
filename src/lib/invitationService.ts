@@ -1,8 +1,12 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import type { Database, Tables } from '../types/database'
+
+export type ProjectInvitation = Tables<'project_invitations'>
+export type MyInvitation = Database['public']['Functions']['get_my_project_invitations']['Returns'][number]
 
 // Create an invitation for an email address
-export async function createProjectInvitation(projectId, email) {
+export async function createProjectInvitation(projectId: string, email: string): Promise<ProjectInvitation> {
     const user = await getCurrentUser()
 
     if (!projectId) {
@@ -42,7 +46,7 @@ export async function createProjectInvitation(projectId, email) {
 }
 
 // Get all invitations for a project
-export async function getProjectInvitations(projectId) {
+export async function getProjectInvitations(projectId: string): Promise<ProjectInvitation[]> {
     await getCurrentUser()
 
     if (!projectId) {
@@ -63,7 +67,7 @@ export async function getProjectInvitations(projectId) {
 }
 
 // Get pending invitations sent to the logged-in user's email
-export async function getMyInvitations() {
+export async function getMyInvitations(): Promise<MyInvitation[]> {
     await getCurrentUser()
 
     const { data, error } = await supabase.rpc(
@@ -79,7 +83,7 @@ export async function getMyInvitations() {
 }
 
 // Accept a project invitation
-export async function acceptProjectInvitation(invitationId) {
+export async function acceptProjectInvitation(invitationId: string): Promise<string> {
     await getCurrentUser()
 
     if (!invitationId) {
@@ -102,7 +106,7 @@ export async function acceptProjectInvitation(invitationId) {
 }
 
 // Decline an invitation sent to the logged-in user
-export async function declineProjectInvitation(invitationId) {
+export async function declineProjectInvitation(invitationId: string): Promise<true> {
     await getCurrentUser()
 
     if (!invitationId) {
@@ -121,7 +125,7 @@ export async function declineProjectInvitation(invitationId) {
 }
 
 // Cancel a project invitation
-export async function cancelProjectInvitation(invitationId) {
+export async function cancelProjectInvitation(invitationId: string): Promise<true> {
     await getCurrentUser()
 
     if (!invitationId) {

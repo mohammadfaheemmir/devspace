@@ -1,9 +1,14 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import type { Profile } from '../types/app'
+
+export type MyProfile = Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'created_at' | 'updated_at'> & {
+    email: string | undefined
+}
 
 // Work out the storage path of an avatar from its public URL.
 // Returns null if the URL is not a file in this user's avatar folder.
-function getAvatarPathFromUrl(avatarUrl, userId) {
+function getAvatarPathFromUrl(avatarUrl: string | null | undefined, userId: string): string | null {
     if (!avatarUrl) return null
 
     const marker = '/storage/v1/object/public/avatars/'
@@ -12,14 +17,14 @@ function getAvatarPathFromUrl(avatarUrl, userId) {
     if (markerIndex === -1) return null
 
     const filePath = decodeURIComponent(
-        avatarUrl.slice(markerIndex + marker.length).split('?')[0]
+        avatarUrl.slice(markerIndex + marker.length).split('?')[0] ?? ''
     )
 
     return filePath.startsWith(`${userId}/`) ? filePath : null
 }
 
 // Fetch the current user's profile
-export async function getMyProfile() {
+export async function getMyProfile(): Promise<MyProfile> {
     const user = await getCurrentUser()
 
     const { data, error } = await supabase
@@ -37,7 +42,7 @@ export async function getMyProfile() {
 }
 
 // Update the user's full name
-export async function updateMyProfile(fullName) {
+export async function updateMyProfile(fullName: string): Promise<Profile> {
     const user = await getCurrentUser()
     const trimmedName = fullName?.trim()
 
@@ -61,7 +66,7 @@ export async function updateMyProfile(fullName) {
 }
 
 // Upload a profile avatar
-export async function uploadMyAvatar(file) {
+export async function uploadMyAvatar(file: File): Promise<string> {
     const user = await getCurrentUser()
 
     if (!file) throw new Error('Please select an image.')
@@ -88,7 +93,7 @@ export async function uploadMyAvatar(file) {
         user.id
     )
 
-    const extension = file.type.split('/')[1].replace('jpeg', 'jpg')
+    const extension = (file.type.split('/')[1] ?? 'jpg').replace('jpeg', 'jpg')
     const filePath = `${user.id}/avatar-${Date.now()}.${extension}`
 
     const { error: uploadError } = await supabase.storage
@@ -136,7 +141,7 @@ export async function uploadMyAvatar(file) {
 }
 
 // Remove the current user's avatar
-export async function removeMyAvatar() {
+export async function removeMyAvatar(): Promise<true> {
     const user = await getCurrentUser()
 
     const { data: profile, error: fetchError } = await supabase
@@ -177,7 +182,7 @@ export async function removeMyAvatar() {
 }
 
 // Change the user's email address
-export async function updateMyEmail(newEmail) {
+export async function updateMyEmail(newEmail: string) {
     const user = await getCurrentUser()
     const trimmedEmail = newEmail?.trim().toLowerCase()
 
@@ -199,7 +204,7 @@ export async function updateMyEmail(newEmail) {
 }
 
 // Change the user's password
-export async function updateMyPassword(newPassword) {
+export async function updateMyPassword(newPassword: string) {
     await getCurrentUser()
 
     if (!newPassword || newPassword.length < 8) {

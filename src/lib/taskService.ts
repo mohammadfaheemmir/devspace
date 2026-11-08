@@ -1,8 +1,37 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import type { Tables } from '../types/database'
+import type { Task, TaskPriority, TaskStatus } from '../types/app'
+
+// What the task form sends. Priority arrives as a plain string from a
+// <select>, so it is validated before use.
+export type TaskInput = {
+    title: string
+    description?: string | null
+    priority?: string | null
+    assignee_id?: string | null
+    due_date?: string | null
+}
+
+const TASK_PRIORITIES: readonly TaskPriority[] = ['low', 'medium', 'high']
+const TASK_STATUSES: readonly TaskStatus[] = ['todo', 'in_progress', 'done']
+
+export function isTaskPriority(value: unknown): value is TaskPriority {
+    return TASK_PRIORITIES.includes(value as TaskPriority)
+}
+
+export function isTaskStatus(value: unknown): value is TaskStatus {
+    return TASK_STATUSES.includes(value as TaskStatus)
+}
+
+// The database's CHECK constraints guarantee status and priority are valid,
+// so a row can safely be treated as the narrower app type.
+function toTask(row: Tables<'tasks'>): Task {
+    return row as Task
+}
 
 // Fetch project tasks
-export async function getTasks(projectId) {
+export async function getTasks(projectId: string): Promise<Task[]> {
     await getCurrentUser()
 
     if (!projectId) {
@@ -17,57 +46,54 @@ export async function getTasks(projectId) {
 
     if (error) throw new Error(error.message)
 
-    return data || []
+    return (data || []).map(toTask)
 }
 
 // Create a task
-export async function createTask(projectId, task) {
+export async function createTask(projectId: string, task: TaskInput): Promise<Task> {
     const user = await getCurrentUser()
 
     if (!projectId) {
         throw new Error('Project ID is required.')
     }
 
-    if (!task?.title?.trim()) {
+    const title = task?.title?.trim()
+
+    if (!title) {
         throw new Error('Task title is required.')
     }
 
-    const allowedPriorities = ['low', 'medium', 'high']
     const priority = task.priority || 'medium'
 
-    if (!allowedPriorities.includes(priority)) {
+    if (!isTaskPriority(priority)) {
         throw new Error('Invalid task priority.')
-    }
-
-    const taskData = {
-        project_id: projectId,
-        title: task.title.trim(),
-        description: task.description?.trim() || null,
-        status: 'todo',
-        priority,
-        created_by: user.id,
-        assignee_id: task.assignee_id || null,
-        due_date: task.due_date || null,
     }
 
     const { data, error } = await supabase
         .from('tasks')
-        .insert(taskData)
+        .insert({
+            project_id: projectId,
+            title,
+            description: task.description?.trim() || null,
+            status: 'todo',
+            priority,
+            created_by: user.id,
+            assignee_id: task.assignee_id || null,
+            due_date: task.due_date || null,
+        })
         .select()
         .single()
 
     if (error) throw new Error(error.message)
 
-    return data
+    return toTask(data)
 }
 
 // Update task status
-export async function updateTaskStatus(taskId, status) {
+export async function updateTaskStatus(taskId: string, status: string): Promise<Task> {
     await getCurrentUser()
 
-    const allowedStatuses = ['todo', 'in_progress', 'done']
-
-    if (!taskId || !allowedStatuses.includes(status)) {
+    if (!taskId || !isTaskStatus(status)) {
         throw new Error('Invalid task ID or status.')
     }
 
@@ -80,11 +106,11 @@ export async function updateTaskStatus(taskId, status) {
 
     if (error) throw new Error(error.message)
 
-    return data
+    return toTask(data)
 }
 
 // Assign or reassign a task
-export async function updateTaskAssignee(taskId, assigneeId) {
+export async function updateTaskAssignee(taskId: string, assigneeId: string | null): Promise<Task> {
     await getCurrentUser()
 
     if (!taskId) {
@@ -100,13 +126,11 @@ export async function updateTaskAssignee(taskId, assigneeId) {
 
     if (error) throw new Error(error.message)
 
-    return data
+    return toTask(data)
 }
 
-const ALLOWED_PRIORITIES = ['low', 'medium', 'high']
-
 // Edit a task's details (title, description, priority, assignee, due date).
-export async function updateTask(taskId, task) {
+export async function updateTask(taskId: string, task: TaskInput): Promise<Task> {
     await getCurrentUser()
 
     if (!taskId) {
@@ -121,7 +145,7 @@ export async function updateTask(taskId, task) {
 
     const priority = task.priority || 'medium'
 
-    if (!ALLOWED_PRIORITIES.includes(priority)) {
+    if (!isTaskPriority(priority)) {
         throw new Error('Invalid task priority.')
     }
 
@@ -148,12 +172,11 @@ export async function updateTask(taskId, task) {
         )
     }
 
-    return data
+    return toTask(data)
 }
 
-// Delete a task. Whether its comments are removed with it depends on the
-// database foreign key (ON DELETE CASCADE); otherwise Supabase returns an error.
-export async function deleteTask(taskId) {
+// Delete a task. Its comments are removed with it (ON DELETE CASCADE).
+export async function deleteTask(taskId: string): Promise<true> {
     await getCurrentUser()
 
     if (!taskId) {

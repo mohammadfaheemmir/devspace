@@ -1,8 +1,15 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import type { Tables } from '../types/database'
+
+// A comment with its author's display details, as shown in the UI.
+export type TaskComment = Pick<Tables<'comments'>, 'id' | 'task_id' | 'project_id' | 'author_id' | 'content' | 'created_at'> & {
+    author_name: string
+    author_avatar: string | null
+}
 
 // Fetch comments for a task
-export async function getTaskComments(taskId) {
+export async function getTaskComments(taskId: string): Promise<TaskComment[]> {
     await getCurrentUser()
 
     if (!taskId) {
@@ -31,15 +38,15 @@ export async function getTaskComments(taskId) {
         throw new Error(error.message)
     }
 
-    return (data || []).map((comment) => ({
+    return (data || []).map(({ profiles, ...comment }) => ({
         ...comment,
-        author_name: comment.profiles?.full_name || 'Unknown user',
-        author_avatar: comment.profiles?.avatar_url || null,
+        author_name: profiles?.full_name || 'Unknown user',
+        author_avatar: profiles?.avatar_url || null,
     }))
 }
 
 // Add a comment to a task
-export async function createTaskComment(taskId, projectId, content) {
+export async function createTaskComment(taskId: string, projectId: string, content: string): Promise<TaskComment> {
     const user = await getCurrentUser()
 
     if (!taskId || !projectId) {
@@ -79,16 +86,18 @@ export async function createTaskComment(taskId, projectId, content) {
         throw new Error(error.message)
     }
 
+    const { profiles, ...comment } = data
+
     return {
-        ...data,
-        author_name: data.profiles?.full_name || 'Unknown user',
-        author_avatar: data.profiles?.avatar_url || null,
+        ...comment,
+        author_name: profiles?.full_name || 'Unknown user',
+        author_avatar: profiles?.avatar_url || null,
     }
 }
 
 // Edit the text of a comment. Only the content changes; the author,
 // task and project stay the same.
-export async function updateTaskComment(commentId, content) {
+export async function updateTaskComment(commentId: string, content: string): Promise<Pick<Tables<'comments'>, 'id' | 'content'>> {
     await getCurrentUser()
 
     if (!commentId) {
@@ -124,7 +133,7 @@ export async function updateTaskComment(commentId, content) {
 }
 
 // Delete a comment
-export async function deleteTaskComment(commentId) {
+export async function deleteTaskComment(commentId: string): Promise<true> {
     await getCurrentUser()
 
     if (!commentId) {

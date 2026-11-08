@@ -1,8 +1,9 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import type { ProjectMember, ProjectRole } from '../types/app'
 
 // Fetch project members.
-export async function getProjectMembers(projectId) {
+export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
     await getCurrentUser()
 
     if (!projectId) {
@@ -33,7 +34,7 @@ export async function getProjectMembers(projectId) {
     return (data || []).map((member) => ({
         id: member.id,
         user_id: member.user_id,
-        role: member.role,
+        role: member.role as ProjectRole,
         joined_at: member.joined_at,
         full_name: member.profiles?.full_name || 'Unnamed member',
         avatar_url: member.profiles?.avatar_url || null,
@@ -41,7 +42,7 @@ export async function getProjectMembers(projectId) {
 }
 
 // Transfer project ownership.
-export async function transferProjectOwnership(projectId, newOwnerId) {
+export async function transferProjectOwnership(projectId: string, newOwnerId: string): Promise<true> {
     const currentUser = await getCurrentUser()
 
     if (!projectId || !newOwnerId) {
@@ -67,17 +68,17 @@ export async function transferProjectOwnership(projectId, newOwnerId) {
 
 // Promote a member to admin or demote an admin to member.
 export async function updateProjectMemberRole(
-    projectId,
-    memberUserId,
-    nextRole
-) {
+    projectId: string,
+    memberUserId: string,
+    nextRole: string
+): Promise<{ id: string; user_id: string; role: ProjectRole }> {
     await getCurrentUser()
 
     if (!projectId || !memberUserId) {
         throw new Error('Project ID and member user ID are required.')
     }
 
-    if (!['admin', 'member'].includes(nextRole)) {
+    if (nextRole !== 'admin' && nextRole !== 'member') {
         throw new Error('Only admin and member roles can be assigned here.')
     }
 
@@ -101,11 +102,11 @@ export async function updateProjectMemberRole(
         )
     }
 
-    return data
+    return { ...data, role: data.role as ProjectRole }
 }
 
 // Remove another project member.
-export async function removeProjectMember(projectId, memberUserId) {
+export async function removeProjectMember(projectId: string, memberUserId: string): Promise<true> {
     const currentUser = await getCurrentUser()
 
     if (!projectId || !memberUserId) {
@@ -139,7 +140,7 @@ export async function removeProjectMember(projectId, memberUserId) {
 }
 
 // Leave a project.
-export async function leaveProject(projectId) {
+export async function leaveProject(projectId: string): Promise<true> {
     const currentUser = await getCurrentUser()
 
     if (!projectId) {
