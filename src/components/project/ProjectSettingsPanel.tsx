@@ -1,9 +1,19 @@
-import { useState } from 'react'
+import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { getErrorMessage } from '../../lib/errors'
+import type { Project } from '../../types/app'
 import { useToast } from '../../context/useToast'
 import { updateProject } from '../../lib/projectService'
 
 // Edit the project name and description (owners and admins only).
-function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectChange, onError }) {
+type ProjectSettingsPanelProps = {
+    project: Project
+    projectId: string
+    isProjectAdmin: boolean
+    onProjectChange: Dispatch<SetStateAction<Project | null>>
+    onError: (message: string) => void
+}
+
+function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectChange, onError }: ProjectSettingsPanelProps) {
     const toast = useToast()
     const [showProjectSettings, setShowProjectSettings] = useState(false)
     const [savingProjectSettings, setSavingProjectSettings] = useState(false)
@@ -24,7 +34,7 @@ function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectCha
     }
 
     // Save project settings. Database RLS independently enforces owner/admin access.
-    async function handleSaveProjectSettings(event) {
+    async function handleSaveProjectSettings(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
 
         if (!isProjectAdmin) {
@@ -46,12 +56,12 @@ function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectCha
                 description: projectSettingsDescription,
             })
 
-            onProjectChange((previous) => ({ ...previous, ...updatedProject }))
+            onProjectChange((previous) => (previous ? { ...previous, ...updatedProject } : previous))
             setShowProjectSettings(false)
             toast.success('Project settings saved.')
         } catch (err) {
             console.error('Project settings update failed:', err)
-            onError(err.message || 'Unable to update project settings.')
+            onError(getErrorMessage(err, 'Unable to update project settings.'))
         } finally {
             setSavingProjectSettings(false)
         }

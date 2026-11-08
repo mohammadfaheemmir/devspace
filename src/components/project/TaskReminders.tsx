@@ -7,17 +7,32 @@ import {
 } from 'lucide-react'
 import { formatDueDate, getLocalDateString } from './taskUtils'
 import { useDismiss } from '../../hooks/useDismiss'
+import type { Task } from '../../types/app'
+
+type Reminder = {
+    id: string
+    task: Task
+    daysUntilDue: number
+    type: 'overdue' | 'upcoming'
+}
 
 // Bell button with a dropdown of tasks that are overdue or due within
 // three days. Read state is remembered per project in localStorage.
-function TaskReminders({ projectId, projectName, tasks, tasksLoaded }) {
+type TaskRemindersProps = {
+    projectId: string
+    projectName: string
+    tasks: Task[]
+    tasksLoaded: boolean
+}
+
+function TaskReminders({ projectId, projectName, tasks, tasksLoaded }: TaskRemindersProps) {
     const [showNotifications, setShowNotifications] = useState(false)
     const menuRef = useRef(null)
 
     // Close the dropdown on Escape or a click outside it.
     useDismiss(menuRef, showNotifications, () => setShowNotifications(false))
 
-    const [readNotificationIds, setReadNotificationIds] = useState(() => {
+    const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
         try {
             const saved = localStorage.getItem(`task-notifications-read-${projectId}`)
             return saved ? JSON.parse(saved) : []
@@ -54,7 +69,7 @@ function TaskReminders({ projectId, projectName, tasks, tasksLoaded }) {
     const today = getLocalDateString()
     const taskNotifications = tasks
         .filter((task) => task.due_date && task.status !== 'done')
-        .map((task) => {
+        .map((task): Reminder => {
             const daysUntilDue = Math.round(
                 (new Date(`${task.due_date}T12:00:00`).getTime() -
                     new Date(`${today}T12:00:00`).getTime()) /
@@ -75,7 +90,7 @@ function TaskReminders({ projectId, projectName, tasks, tasksLoaded }) {
         (notification) => !readNotificationIds.includes(notification.id)
     ).length
 
-    function markNotificationAsRead(notificationId) {
+    function markNotificationAsRead(notificationId: string) {
         setReadNotificationIds((previous) =>
             previous.includes(notificationId)
                 ? previous

@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { getErrorMessage } from '../../lib/errors'
+import type { ProjectInvitation } from '../../lib/invitationService'
 import { useToast } from '../../context/useToast'
 import {
     cancelProjectInvitation,
@@ -11,14 +13,21 @@ import {
 } from 'lucide-react'
 
 // Invite people by email and manage pending invitations (owners and admins).
-function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError }) {
+type InvitationsPanelProps = {
+    projectId: string
+    invitations: ProjectInvitation[]
+    onInvitationsChange: Dispatch<SetStateAction<ProjectInvitation[]>>
+    onError: (message: string) => void
+}
+
+function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError }: InvitationsPanelProps) {
     const toast = useToast()
     const [invitationEmail, setInvitationEmail] = useState('')
     const [invitationSaving, setInvitationSaving] = useState(false)
-    const [cancellingInvitationId, setCancellingInvitationId] = useState(null)
+    const [cancellingInvitationId, setCancellingInvitationId] = useState<string | null>(null)
 
     // Create a project invitation.
-    async function handleCreateInvitation(e) {
+    async function handleCreateInvitation(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
 
         try {
@@ -38,14 +47,14 @@ function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError
             setInvitationEmail('')
             toast.success(`Invitation sent to ${newInvitation.invited_email}.`)
         } catch (err) {
-            onError(err.message || 'Unable to create invitation.')
+            onError(getErrorMessage(err, 'Unable to create invitation.'))
         } finally {
             setInvitationSaving(false)
         }
     }
 
     // Cancel a project invitation.
-    async function handleCancelInvitation(invitationId) {
+    async function handleCancelInvitation(invitationId: string) {
         try {
             setCancellingInvitationId(invitationId)
             onError('')
@@ -59,7 +68,7 @@ function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError
                 )
             )
         } catch (err) {
-            onError(err.message || 'Unable to cancel invitation.')
+            onError(getErrorMessage(err, 'Unable to cancel invitation.'))
         } finally {
             setCancellingInvitationId(null)
         }
@@ -128,12 +137,13 @@ function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError
                                         {invitation.invited_email}
                                     </p>
 
-                                    <p className="text-xs text-slate-400 mt-1">
-                                        Created:{' '}
-                                        {new Date(
-                                            invitation.created_at
-                                        ).toLocaleDateString()}
-                                    </p>
+                                    {/* created_at is nullable; new Date(null) would show 1 Jan 1970. */}
+                                    {invitation.created_at && (
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Created:{' '}
+                                            {new Date(invitation.created_at).toLocaleDateString()}
+                                        </p>
+                                    )}
 
                                     <span
                                         className={`inline-block mt-2 text-xs px-2.5 py-1 rounded-full capitalize ${invitation.status === 'pending'

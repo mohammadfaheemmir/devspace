@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
+import { getErrorMessage } from '../../lib/errors'
+import type { ProjectMember } from '../../types/app'
 import { useToast } from '../../context/useToast'
 import {
     getProjectMembers,
@@ -11,13 +13,23 @@ import {
 } from 'lucide-react'
 
 // List project members with role changes and removal.
-function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner, isProjectAdmin, onMembersChange, onError }) {
+type ProjectMembersPanelProps = {
+    projectId: string
+    members: ProjectMember[]
+    currentUserId: string | null
+    isProjectOwner: boolean
+    isProjectAdmin: boolean
+    onMembersChange: Dispatch<SetStateAction<ProjectMember[]>>
+    onError: (message: string) => void
+}
+
+function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner, isProjectAdmin, onMembersChange, onError }: ProjectMembersPanelProps) {
     const toast = useToast()
-    const [updatingMemberRoleId, setUpdatingMemberRoleId] = useState(null)
-    const [removingMemberId, setRemovingMemberId] = useState(null)
+    const [updatingMemberRoleId, setUpdatingMemberRoleId] = useState<string | null>(null)
+    const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
 
     // Only the project owner can promote members or demote admins.
-    async function handleUpdateMemberRole(member, nextRole) {
+    async function handleUpdateMemberRole(member: ProjectMember, nextRole: 'admin' | 'member') {
         if (!isProjectOwner) {
             onError('Only the project owner can change member roles.')
             return
@@ -45,14 +57,14 @@ function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner
             toast.success(`${member.full_name} is now ${nextRole === 'admin' ? 'an admin' : 'a member'}.`)
         } catch (err) {
             console.error('Member role update failed:', err)
-            onError(err.message || 'Unable to update member role.')
+            onError(getErrorMessage(err, 'Unable to update member role.'))
         } finally {
             setUpdatingMemberRoleId(null)
         }
     }
 
     // Remove a member according to the role permissions enforced by Supabase RLS.
-    async function handleRemoveMember(member) {
+    async function handleRemoveMember(member: ProjectMember) {
         if (!member || member.role === 'owner' || member.user_id === currentUserId) return
 
         const canRemove = isProjectOwner
@@ -75,7 +87,7 @@ function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner
             toast.success(`${member.full_name} was removed from the project.`)
         } catch (err) {
             console.error('Remove project member failed:', err)
-            onError(err.message || 'Unable to remove this member.')
+            onError(getErrorMessage(err, 'Unable to remove this member.'))
         } finally {
             setRemovingMemberId(null)
         }

@@ -1,3 +1,4 @@
+import type { ProjectActivity } from '../../lib/activityService'
 import {
     ClipboardList,
     UserRound,
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react'
 
 // Activity icon.
-function getActivityIcon(type) {
+function getActivityIcon(type: string) {
     switch (type) {
         case 'project_created':
             return <ClipboardList size={18} />
@@ -36,7 +37,7 @@ function getActivityIcon(type) {
     }
 }
 
-function getActivityColor(type) {
+function getActivityColor(type: string) {
     switch (type) {
         case 'project_created':
             return 'bg-indigo-500/15 text-indigo-400'
@@ -59,7 +60,15 @@ function getActivityColor(type) {
 }
 
 // Timeline of recent project activity with a manual refresh button.
-function ProjectActivityFeed({ activities, loading, error, onRefresh, currentUserId }) {
+type ProjectActivityFeedProps = {
+    activities: ProjectActivity[]
+    loading: boolean
+    error: string
+    onRefresh: () => void
+    currentUserId: string | null
+}
+
+function ProjectActivityFeed({ activities, loading, error, onRefresh, currentUserId }: ProjectActivityFeedProps) {
     return (
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">

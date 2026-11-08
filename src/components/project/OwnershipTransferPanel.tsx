@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
+import { getErrorMessage } from '../../lib/errors'
+import type { ProjectMember } from '../../types/app'
 import { useToast } from '../../context/useToast'
 import {
     getProjectMembers,
@@ -6,7 +8,16 @@ import {
 } from '../../lib/projectMemberService'
 
 // Hand project ownership to another member (current owner only).
-function OwnershipTransferPanel({ projectId, members, currentUserId, isProjectOwner, onMembersChange, onError }) {
+type OwnershipTransferPanelProps = {
+    projectId: string
+    members: ProjectMember[]
+    currentUserId: string | null
+    isProjectOwner: boolean
+    onMembersChange: Dispatch<SetStateAction<ProjectMember[]>>
+    onError: (message: string) => void
+}
+
+function OwnershipTransferPanel({ projectId, members, currentUserId, isProjectOwner, onMembersChange, onError }: OwnershipTransferPanelProps) {
     const toast = useToast()
     const [selectedNewOwnerId, setSelectedNewOwnerId] = useState('')
     const [transferringOwnership, setTransferringOwnership] = useState(false)
@@ -50,7 +61,7 @@ function OwnershipTransferPanel({ projectId, members, currentUserId, isProjectOw
             toast.success(`Ownership transferred to ${selectedMember.full_name}.`)
         } catch (err) {
             console.error('Ownership transfer failed:', err)
-            onError(err.message || 'Unable to transfer project ownership.')
+            onError(getErrorMessage(err, 'Unable to transfer project ownership.'))
         } finally {
             setTransferringOwnership(false)
         }

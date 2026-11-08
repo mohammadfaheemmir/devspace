@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { getErrorMessage } from '../../lib/errors'
+import type { Project } from '../../types/app'
 import { useNavigate } from 'react-router-dom'
 import { leaveProject } from '../../lib/projectMemberService'
 import { deleteProject } from '../../lib/projectService'
@@ -7,7 +9,14 @@ import {
 } from 'lucide-react'
 
 // Leave the project (members/admins) or delete it (owner).
-function ProjectDangerZone({ project, projectId, isProjectOwner, onError }) {
+type ProjectDangerZoneProps = {
+    project: Project
+    projectId: string
+    isProjectOwner: boolean
+    onError: (message: string) => void
+}
+
+function ProjectDangerZone({ project, projectId, isProjectOwner, onError }: ProjectDangerZoneProps) {
     const [leavingProject, setLeavingProject] = useState(false)
     const [deletingProject, setDeletingProject] = useState(false)
     const navigate = useNavigate()
@@ -35,7 +44,7 @@ function ProjectDangerZone({ project, projectId, isProjectOwner, onError }) {
             })
         } catch (err) {
             console.error('Project deletion failed:', err)
-            onError(err.message || 'Unable to delete this project.')
+            onError(getErrorMessage(err, 'Unable to delete this project.'))
         } finally {
             setDeletingProject(false)
         }
@@ -61,7 +70,7 @@ function ProjectDangerZone({ project, projectId, isProjectOwner, onError }) {
             })
         } catch (err) {
             console.error('Leave project failed:', err)
-            onError(err.message || 'Unable to leave this project.')
+            onError(getErrorMessage(err, 'Unable to leave this project.'))
         } finally {
             setLeavingProject(false)
         }
