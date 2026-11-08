@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { createTask } from '../../lib/taskService'
 import { getLocalDateString } from './taskUtils'
+import { useDismiss } from '../../hooks/useDismiss'
 
 const EMPTY_TASK_FORM = {
     title: '',
@@ -18,6 +19,10 @@ const inputClass =
 function CreateTaskModal({ projectId, members, onCreated, onClose, onError }) {
     const [taskForm, setTaskForm] = useState(EMPTY_TASK_FORM)
     const [saving, setSaving] = useState(false)
+    const dialogRef = useRef(null)
+
+    // Escape or a click on the backdrop closes the modal (not while saving).
+    useDismiss(dialogRef, !saving, onClose)
 
     function handleInputChange(event) {
         const { name, value } = event.target
@@ -49,6 +54,7 @@ function CreateTaskModal({ projectId, members, onCreated, onClose, onError }) {
     return (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
             <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="create-task-title"

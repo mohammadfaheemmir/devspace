@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
     Bell,
     AlertCircle,
@@ -6,11 +6,17 @@ import {
     CheckCheck,
 } from 'lucide-react'
 import { formatDueDate, getLocalDateString } from './taskUtils'
+import { useDismiss } from '../../hooks/useDismiss'
 
 // Bell button with a dropdown of tasks that are overdue or due within
 // three days. Read state is remembered per project in localStorage.
 function TaskReminders({ projectId, projectName, tasks, tasksLoaded }) {
     const [showNotifications, setShowNotifications] = useState(false)
+    const menuRef = useRef(null)
+
+    // Close the dropdown on Escape or a click outside it.
+    useDismiss(menuRef, showNotifications, () => setShowNotifications(false))
+
     const [readNotificationIds, setReadNotificationIds] = useState(() => {
         try {
             const saved = localStorage.getItem(`task-notifications-read-${projectId}`)
@@ -87,7 +93,7 @@ function TaskReminders({ projectId, projectName, tasks, tasksLoaded }) {
     }
 
     return (
-        <div className="relative">
+        <div ref={menuRef} className="relative">
             <button
                 type="button"
                 onClick={() => setShowNotifications((previous) => !previous)}

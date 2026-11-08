@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -36,6 +36,7 @@ import {
 } from '../lib/notificationService'
 
 import { getMyProfile } from '../lib/profileService'
+import { useDismiss } from '../hooks/useDismiss'
 
 
 function formatNotificationDate(date) {
@@ -81,6 +82,17 @@ function Dashboard() {
     const [notificationLoading, setNotificationLoading] = useState(true)
     const [notificationError, setNotificationError] = useState('')
     const [markingAllRead, setMarkingAllRead] = useState(false)
+
+    // Close the notification dropdown and the create-project modal on
+    // Escape or a click outside them.
+    const notificationMenuRef = useRef(null)
+    const createDialogRef = useRef(null)
+
+    useDismiss(notificationMenuRef, notificationsOpen, () => setNotificationsOpen(false))
+    useDismiss(createDialogRef, creating && !saving, () => {
+        setCreating(false)
+        setError('')
+    })
 
     const unreadCount = notifications.filter(
         (notification) => !notification.is_read
@@ -419,7 +431,7 @@ function Dashboard() {
                     <div className="flex items-center gap-3 sm:gap-4">
 
                         {/* Notification bell */}
-                        <div className="relative">
+                        <div ref={notificationMenuRef} className="relative">
 
                             <button
                                 type="button"
@@ -950,7 +962,13 @@ function Dashboard() {
 
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
 
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-7">
+                    <div
+                        ref={createDialogRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Create new project"
+                        className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-7"
+                    >
 
                         <div className="flex items-center justify-between">
 
