@@ -134,3 +134,22 @@ describe('filterAndSortTasks', () => {
         expect(run({ sort: 'priority' })).toEqual(['a', 'c', 'b'])
     })
 })
+
+describe('filterAndSortTasks - label filter', () => {
+    const tasks = [
+        task({ id: 'a', created_at: '2026-01-01T00:00:00Z' }),
+        task({ id: 'b', created_at: '2026-01-02T00:00:00Z' }),
+        task({ id: 'c', created_at: '2026-01-03T00:00:00Z' }),
+    ]
+    const labelIdsByTask = { a: ['bug'], c: ['bug', 'design'] }
+
+    it('keeps only tasks that have the chosen label', () => {
+        const result = filterAndSortTasks(tasks, { ...DEFAULT_TASK_FILTERS, label: 'bug' }, labelIdsByTask)
+        expect(result.map((item) => item.id)).toEqual(['c', 'a'])
+    })
+
+    it('shows everything when no label is chosen or no label data is given', () => {
+        expect(filterAndSortTasks(tasks, DEFAULT_TASK_FILTERS, labelIdsByTask)).toHaveLength(3)
+        expect(filterAndSortTasks(tasks, DEFAULT_TASK_FILTERS)).toHaveLength(3)
+    })
+})

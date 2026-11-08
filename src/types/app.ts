@@ -31,3 +31,11 @@ export type ProjectMember = {
     full_name: string
     avatar_url: string | null
 }
+
+// Task labels. Colours match the CHECK constraint on project_labels.color.
+export const LABEL_COLORS = ['red', 'orange', 'amber', 'green', 'teal', 'blue', 'purple', 'pink'] as const
+export type LabelColor = (typeof LABEL_COLORS)[number]
+
+export type ProjectLabel = Omit<Tables<'project_labels'>, 'color'> & {
+    color: LabelColor
+}

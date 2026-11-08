@@ -8,6 +8,8 @@ export type TaskFilters = {
     priority: 'all' | TaskPriority
     /** 'all', 'unassigned', or a member's user ID */
     assignee: string
+    /** 'all', or a label ID */
+    label: string
     sort: TaskSort
 }
 
@@ -55,13 +57,19 @@ export const DEFAULT_TASK_FILTERS: TaskFilters = {
     status: 'all',
     priority: 'all',
     assignee: 'all',
+    label: 'all',
     sort: 'newest',
 }
 
 const PRIORITY_RANK: Record<TaskPriority, number> = { high: 3, medium: 2, low: 1 }
 
 // Apply search, filters and sorting without changing the source list.
-export function filterAndSortTasks<T extends TaskLike>(tasks: readonly T[], filters: TaskFilters): T[] {
+// `labelIdsByTask` ({ taskId: [labelId, ...] }) is only needed for the label filter.
+export function filterAndSortTasks<T extends TaskLike & { id: string }>(
+    tasks: readonly T[],
+    filters: TaskFilters,
+    labelIdsByTask: Readonly<Record<string, readonly string[]>> = {}
+): T[] {
     const search = filters.search.trim().toLowerCase()
 
     return tasks
@@ -82,11 +90,16 @@ export function filterAndSortTasks<T extends TaskLike>(tasks: readonly T[], filt
                     ? !task.assignee_id
                     : task.assignee_id === filters.assignee)
 
+            const matchesLabel =
+                filters.label === 'all' ||
+                (labelIdsByTask[task.id] ?? []).includes(filters.label)
+
             return (
                 matchesSearch &&
                 matchesStatus &&
                 matchesPriority &&
-                matchesAssignee
+                matchesAssignee &&
+                matchesLabel
             )
         })
         .sort((a, b) => {
