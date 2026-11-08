@@ -1,3 +1,4 @@
+import type { User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
 // Return the signed-in user, or throw if nobody is signed in.
@@ -6,7 +7,7 @@ import { supabase } from './supabase'
 // expired) instead of calling the Auth server on every request. That is
 // safe because Supabase verifies the access token on every database and
 // storage request, and Row Level Security decides what the user can do.
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<User> {
     const { data, error } = await supabase.auth.getSession()
 
     if (error) {

@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@sentry/react": "^11.9.0",
@@ -32,6 +33,7 @@
     "axe-core": "^4.11.1",
     "jsdom": "^31.0.0",
     "oxlint": "^1.89.0",
+    "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.1.0"
   }

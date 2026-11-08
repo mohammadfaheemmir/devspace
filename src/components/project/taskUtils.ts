@@ -1,5 +1,22 @@
+import type { ProjectMember, Task, TaskPriority, TaskStatus } from '../../types/app'
+
+export type TaskSort = 'newest' | 'oldest' | 'due_date' | 'priority'
+
+export type TaskFilters = {
+    search: string
+    status: 'all' | TaskStatus
+    priority: 'all' | TaskPriority
+    /** 'all', 'unassigned', or a member's user ID */
+    assignee: string
+    sort: TaskSort
+}
+
+// The task fields these helpers need, so callers can pass full tasks or
+// lighter objects.
+type TaskLike = Pick<Task, 'title' | 'description' | 'status' | 'priority' | 'assignee_id' | 'due_date' | 'created_at'>
+
 // Date-only helpers avoid timezone shifts when parsing Supabase DATE values.
-export function getLocalDateString() {
+export function getLocalDateString(): string {
     const now = new Date()
     const year = now.getFullYear()
     const month = String(now.getMonth() + 1).padStart(2, '0')
@@ -7,7 +24,7 @@ export function getLocalDateString() {
     return `${year}-${month}-${day}`
 }
 
-export function formatDueDate(dateValue) {
+export function formatDueDate(dateValue: string | null | undefined): string {
     if (!dateValue) return ''
     const [year, month, day] = String(dateValue).split('-').map(Number)
     if (!year || !month || !day) return String(dateValue)
@@ -18,7 +35,7 @@ export function formatDueDate(dateValue) {
     }).format(new Date(year, month - 1, day))
 }
 
-export function isTaskOverdue(task) {
+export function isTaskOverdue(task: Pick<Task, 'due_date' | 'status'>): boolean {
     return Boolean(
         task.due_date &&
         task.status !== 'done' &&
@@ -27,13 +44,13 @@ export function isTaskOverdue(task) {
 }
 
 // Shared priority badge colours so list and board views look the same.
-export function getPriorityBadgeClasses(priority) {
+export function getPriorityBadgeClasses(priority: TaskPriority | null | undefined): string {
     if (priority === 'high') return 'bg-red-500/10 text-red-400'
     if (priority === 'low') return 'bg-green-500/10 text-green-400'
     return 'bg-yellow-500/10 text-yellow-400'
 }
 
-export const DEFAULT_TASK_FILTERS = {
+export const DEFAULT_TASK_FILTERS: TaskFilters = {
     search: '',
     status: 'all',
     priority: 'all',
@@ -41,10 +58,10 @@ export const DEFAULT_TASK_FILTERS = {
     sort: 'newest',
 }
 
-const PRIORITY_RANK = { high: 3, medium: 2, low: 1 }
+const PRIORITY_RANK: Record<TaskPriority, number> = { high: 3, medium: 2, low: 1 }
 
 // Apply search, filters and sorting without changing the source list.
-export function filterAndSortTasks(tasks, filters) {
+export function filterAndSortTasks<T extends TaskLike>(tasks: readonly T[], filters: TaskFilters): T[] {
     const search = filters.search.trim().toLowerCase()
 
     return tasks
@@ -92,7 +109,10 @@ export function filterAndSortTasks(tasks, filters) {
 }
 
 // Look up a member's display name by user ID.
-export function getMemberName(members, userId) {
+export function getMemberName(
+    members: readonly Pick<ProjectMember, 'user_id' | 'full_name'>[],
+    userId: string | null | undefined
+): string {
     const member = members.find((item) => item.user_id === userId)
     return member?.full_name || 'Unknown member'
 }

@@ -27,8 +27,25 @@ npm run dev
 | `npm run build` | Build for production into `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | Lint with Oxlint |
+| `npm run typecheck` | Type-check the TypeScript files |
 | `npm test` | Run the test suite once (Vitest) |
 | `npm run test:watch` | Re-run tests on every change |
+
+## TypeScript
+
+The project is being converted to TypeScript gradually; `.js`/`.jsx` and
+`.ts`/`.tsx` files work side by side, and `.ts` files are checked strictly
+(`npm run typecheck`, also run in CI).
+
+Database types in `src/types/database.ts` are generated from the live schema.
+After changing the database, regenerate them:
+
+```bash
+npx supabase gen types --lang=typescript --remote=<project-ref> --schema public > src/types/database.ts
+```
+
+`src/types/app.ts` adds app-level types on top (for example task statuses,
+which the database stores as plain text with CHECK constraints).
 
 ## Error monitoring
 
