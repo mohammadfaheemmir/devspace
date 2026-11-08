@@ -4,6 +4,9 @@
 -- so declining goes through this function, which mirrors the checks in
 -- accept_project_invitation(): signed in, invitation addressed to the
 -- caller's email, and still pending.
+--
+-- Applied to the live project "devspace" on 2026-11-08 (outside the CLI's
+-- migration history; see the README for `supabase migration repair`).
 
 create or replace function public.decline_project_invitation(invitation_id uuid)
 returns void
