@@ -85,14 +85,18 @@ function ProjectDetails({ projectId }: { projectId: string }) {
     const [labels, setLabels] = useState<ProjectLabel[]>([])
     const [labelIdsByTask, setLabelIdsByTask] = useState<Record<string, string[]>>({})
 
-    // Latest label state for the Realtime handlers below (they are created
-    // once per project, so they read current values through refs).
+    // Latest state for the Realtime handlers below (they are created once
+    // per project, so they read current values through refs).
     const labelsRef = useRef(labels)
     const labelIdsByTaskRef = useRef(labelIdsByTask)
+    const membersRef = useRef(members)
+    const currentUserIdRef = useRef(currentUserId)
     useEffect(() => {
         labelsRef.current = labels
         labelIdsByTaskRef.current = labelIdsByTask
-    }, [labels, labelIdsByTask])
+        membersRef.current = members
+        currentUserIdRef.current = currentUserId
+    }, [labels, labelIdsByTask, members, currentUserId])
     const [taskView, setTaskView] = useState<TaskView>('list')
 
     // Task search, filters and sorting.
@@ -292,6 +296,64 @@ function ProjectDetails({ projectId }: { projectId: string }) {
             supabase.removeChannel(channel)
         }
     }, [projectId])
+
+    // Real-time subscription for project members: joins, removals and role
+    // changes show up without refreshing (assignee lists, admin controls).
+    useEffect(() => {
+        let active = true
+
+        async function refreshMembers() {
+            try {
+                const memberData = await getProjectMembers(projectId)
+                if (!active) return
+
+                const me = currentUserIdRef.current
+                const myMembership = memberData.find((member) => member.user_id === me)
+
+                // Removed from the project: the page no longer works for them.
+                if (me && !myMembership) {
+                    navigate('/dashboard', {
+                        replace: true,
+                        state: { message: 'You no longer have access to that project.' },
+                    })
+                    return
+                }
+
+                setMembers(memberData)
+
+                // A newly promoted admin needs the invitations list too.
+                if (myMembership && ['owner', 'admin'].includes(myMembership.role)) {
+                    const invitationData = await getProjectInvitations(projectId)
+                    if (active) setInvitations(invitationData)
+                }
+            } catch (err) {
+                console.error('Unable to refresh members:', err)
+            }
+        }
+
+        // DELETE events are unfiltered and not covered by RLS (see the labels
+        // subscription); react only to this project's membership rows.
+        function onMemberDeleted(payload: { old: { id?: string } }) {
+            if (membersRef.current.some((member) => member.id === payload.old.id)) refreshMembers()
+        }
+
+        const projectFilter = `project_id=eq.${projectId}`
+        const channel = supabase
+            .channel(`project-members-${projectId}-${crypto.randomUUID()}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'project_members', filter: projectFilter }, refreshMembers)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'project_members', filter: projectFilter }, refreshMembers)
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'project_members' }, onMemberDeleted)
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.error('Realtime members subscription error:', status)
+                }
+            })
+
+        return () => {
+            active = false
+            supabase.removeChannel(channel)
+        }
+    }, [projectId, navigate])
 
     // Real-time subscription for labels: refetch on any change, so teammates
     // see new, deleted and re-assigned labels without refreshing.

@@ -138,20 +138,19 @@ export async function getProjectSummaries(projectIds: string[]): Promise<Record<
 
     if (!projectIds?.length) return {}
 
-    const [membershipResult, taskResult] = await Promise.all([
+    // Task counts are computed in the database: fetching every task row
+    // would silently stop at Supabase's 1,000-row limit.
+    const [membershipResult, countResult] = await Promise.all([
         supabase
             .from('project_members')
             .select('project_id, role')
             .eq('user_id', user.id)
             .in('project_id', projectIds),
-        supabase
-            .from('tasks')
-            .select('project_id, status')
-            .in('project_id', projectIds),
+        supabase.rpc('get_project_task_counts', { p_project_ids: projectIds }),
     ])
 
     if (membershipResult.error) throw new Error(membershipResult.error.message)
-    if (taskResult.error) throw new Error(taskResult.error.message)
+    if (countResult.error) throw new Error(countResult.error.message)
 
     const summaries: Record<string, ProjectSummary> = Object.fromEntries(
         projectIds.map((id): [string, ProjectSummary] => [id, { role: null, total: 0, done: 0, inProgress: 0 }])
@@ -163,14 +162,14 @@ export async function getProjectSummaries(projectIds: string[]): Promise<Record<
         if (summary) summary.role = role as ProjectRole
     })
 
-    taskResult.data.forEach(({ project_id, status }) => {
-        const summary = summaries[project_id]
-        if (!summary) return
+    for (const row of countResult.data ?? []) {
+        const summary = summaries[row.project_id]
+        if (!summary) continue
 
-        summary.total += 1
-        if (status === 'done') summary.done += 1
-        if (status === 'in_progress') summary.inProgress += 1
-    })
+        summary.total = Number(row.total)
+        summary.done = Number(row.done)
+        summary.inProgress = Number(row.in_progress)
+    }
 
     return summaries
 }

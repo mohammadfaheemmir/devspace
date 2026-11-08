@@ -1,4 +1,5 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { displayStatus } from './invitationUtils'
 import { getErrorMessage } from '../../lib/errors'
 import type { ProjectInvitation } from '../../lib/invitationService'
 import { useToast } from '../../context/useToast'
@@ -146,14 +147,14 @@ function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError
                                     )}
 
                                     <span
-                                        className={`inline-block mt-2 text-xs px-2.5 py-1 rounded-full capitalize ${invitation.status === 'pending'
+                                        className={`inline-block mt-2 text-xs px-2.5 py-1 rounded-full capitalize ${displayStatus(invitation) === 'pending'
                                             ? 'bg-yellow-500/10 text-yellow-400'
-                                            : invitation.status === 'accepted'
+                                            : displayStatus(invitation) === 'accepted'
                                                 ? 'bg-green-500/10 text-green-400'
                                                 : 'bg-slate-700 text-slate-300'
                                             }`}
                                     >
-                                        {invitation.status}
+                                        {displayStatus(invitation)}
                                     </span>
                                 </div>
 

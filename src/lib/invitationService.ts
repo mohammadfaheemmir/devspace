@@ -101,7 +101,12 @@ export async function acceptProjectInvitation(invitationId: string): Promise<str
         throw new Error(error.message)
     }
 
-    // Returns the project ID after successful acceptance
+    // The function returns the project ID, or null when the invitation had
+    // expired (it then marks it 'expired').
+    if (!data) {
+        throw new Error('This invitation has expired. Ask the project admin to invite you again.')
+    }
+
     return data
 }
 

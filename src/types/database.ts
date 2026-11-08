@@ -531,6 +531,15 @@ export type Database = {
           project_name: string
         }[]
       }
+      get_project_task_counts: {
+        Args: { p_project_ids: string[] }
+        Returns: {
+          done: number
+          in_progress: number
+          project_id: string
+          total: number
+        }[]
+      }
       is_project_admin: { Args: { p_project_id: string }; Returns: boolean }
       is_project_member: { Args: { p_project_id: string }; Returns: boolean }
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }

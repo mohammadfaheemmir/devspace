@@ -66,3 +66,10 @@ export function fakeFile(name: string, type: string, size: number): File {
     Object.defineProperty(file, 'size', { value: size })
     return file
 }
+
+// A faked result for `supabase.rpc(...)`. The mocked rpc's return type is a
+// union over every database function's result, so a hand-written fake for
+// one function cannot satisfy it; tests state the fake shape explicitly.
+export function rpcResult(value: { data: unknown; error: unknown }): never {
+    return value as never
+}

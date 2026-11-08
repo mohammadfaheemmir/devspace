@@ -41,9 +41,31 @@ reviewed and approved before being applied to the live project.
   after a member deleted their own task. (migration
   `20261109000200_attachment_task_creator_delete.sql`)
 
+### Fixed (bug hunt)
+
+- Tasks assigned to someone who left or was removed from a project could
+  no longer be changed at all (the task rule requires the assignee to be a
+  member). Leaving or removal now unassigns their tasks.
+- Expired invitations stayed "pending" forever and blocked re-inviting the
+  same email; the database's own expiry update was undone by an error it
+  raised right after. Expired invitations are now retired automatically,
+  shown as "Expired" to admins, and accepting one says it has expired.
+- Dismissing a notice closed an open dialog and lost its unsaved edits.
+- Saving a task could undo a teammate's label change made while it was open.
+- Supabase's 1,000-row limit: dashboard task counts are computed in the
+  database; tasks and label links load in pages; notifications load 50 at a
+  time with "Load older notifications" and an accurate unread count.
+- Supabase does not apply access rules to delete events, so every client
+  received deletes from all projects (IDs only); label and attachment views
+  now ignore those instead of reloading.
+- Project members now update live (joins, removals, role changes); a
+  removed user is returned to the dashboard.
+- Opening an inaccessible project showed a raw database error.
+- (migration `20261109000300_bug_hunt_fixes.sql`)
+
 ### Testing
 
-- 152 tests (from 102), including accessibility audits of the calendar,
+- 167 tests (from 102), including accessibility audits of the calendar,
   label manager and attachments section.
 - The tests are now TypeScript too, with typed test data builders
   (`src/test/fixtures.ts`); `allowJs` is off, so all of `src` is checked.
