@@ -13,7 +13,7 @@ type QueryResult = { data?: unknown; error?: unknown; count?: number | null }
 export function createQuery(result: QueryResult = { data: null, error: null }): any {
     const query: Record<string, unknown> = {}
 
-    for (const method of ['select', 'insert', 'update', 'delete', 'eq', 'neq', 'in', 'order', 'limit']) {
+    for (const method of ['select', 'insert', 'update', 'delete', 'eq', 'neq', 'in', 'lt', 'order', 'limit', 'range']) {
         query[method] = vi.fn(() => query)
     }
 

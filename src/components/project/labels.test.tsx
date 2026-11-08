@@ -156,3 +156,33 @@ describe('TaskFilters label filter', () => {
         expect(screen.getByRole('option', { name: 'Design' })).toBeInTheDocument()
     })
 })
+
+// Regression test: a teammate's label change made while the dialog was open
+// used to be undone when saving.
+describe('TaskFormModal labels - concurrent edits', () => {
+    const task = makeTask({ id: 't1', title: 'Fix crash', priority: 'high' })
+    const extra = makeLabel({ id: 'l-extra', name: 'Extra', color: 'green' })
+
+    it("keeps a teammate's label added while the dialog was open", async () => {
+        const user = userEvent.setup()
+        vi.mocked(updateTask).mockResolvedValue(task)
+        vi.mocked(setTaskLabels).mockImplementation(async (_t, _p, _current, next) => [...next])
+        const handlers = { onSaved: vi.fn(), onClose: vi.fn(), onError: vi.fn(), onLabelsSaved: vi.fn() }
+
+        const { rerender } = withToasts(
+            <TaskFormModal projectId="p1" members={[]} task={task} labels={[bug, design, extra]} initialLabelIds={['l-bug']} {...handlers} />
+        )
+        // A teammate adds "Extra" while the dialog is open.
+        rerender(
+            <ToastProvider>
+                <TaskFormModal projectId="p1" members={[]} task={task} labels={[bug, design, extra]} initialLabelIds={['l-bug', 'l-extra']} {...handlers} />
+            </ToastProvider>
+        )
+
+        await user.click(screen.getByRole('button', { name: /Design/ }))
+        await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+        await waitFor(() => expect(setTaskLabels).toHaveBeenCalledWith('t1', 'p1', ['l-bug', 'l-extra'], ['l-bug', 'l-extra', 'l-design']))
+        expect(handlers.onLabelsSaved).toHaveBeenCalledWith('t1', ['l-bug', 'l-extra', 'l-design'])
+    })
+})

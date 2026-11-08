@@ -57,3 +57,21 @@ describe('useDismiss', () => {
         expect(onClose).not.toHaveBeenCalled()
     })
 })
+
+describe('useDismiss and toast notices', () => {
+    it('does not close when clicking inside an element marked data-dismiss-ignore', () => {
+        const onClose = vi.fn()
+        render(
+            <>
+                <Menu isOpen onClose={onClose} />
+                <div data-dismiss-ignore>
+                    <button type="button">Dismiss notification</button>
+                </div>
+            </>
+        )
+
+        fireEvent.mouseDown(screen.getByText('Dismiss notification'))
+
+        expect(onClose).not.toHaveBeenCalled()
+    })
+})

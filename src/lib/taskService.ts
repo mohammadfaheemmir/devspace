@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import { fetchAllRows } from './pagination'
 import type { Tables } from '../types/database'
 import type { Task, TaskPriority, TaskStatus } from '../types/app'
 
@@ -38,15 +39,19 @@ export async function getTasks(projectId: string): Promise<Task[]> {
         throw new Error('Project ID is required.')
     }
 
-    const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false })
+    // Paged: a single request would silently stop at 1,000 tasks. Ordering
+    // by id as a tie-breaker keeps pages stable.
+    const rows = await fetchAllRows((from, to) =>
+        supabase
+            .from('tasks')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: true })
+            .range(from, to)
+    )
 
-    if (error) throw new Error(error.message)
-
-    return (data || []).map(toTask)
+    return rows.map(toTask)
 }
 
 // Create a task

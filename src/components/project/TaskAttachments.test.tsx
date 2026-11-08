@@ -101,3 +101,26 @@ describe('TaskAttachments', () => {
         expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
     })
 })
+
+// Regression test: Supabase delivers DELETE events from every project (RLS is
+// not applied to deletes), and each one used to trigger a reload.
+describe('TaskAttachments realtime deletes', () => {
+    it('reloads only when one of its own files is deleted', async () => {
+        const { supabase } = await import('../../lib/supabase')
+        vi.mocked(getTaskAttachments).mockResolvedValue([mine])
+        renderSection()
+        await screen.findByText('spec.pdf')
+
+        const channel = vi.mocked(supabase.channel).mock.results.at(-1)?.value
+        const deleteHandler = vi.mocked(channel.on).mock.calls
+            .find(([, filter]: [unknown, { event: string; table: string }]) => filter.event === 'DELETE' && filter.table === 'task_attachments')?.[2]
+        expect(deleteHandler).toBeTypeOf('function')
+
+        vi.mocked(getTaskAttachments).mockClear()
+        deleteHandler({ old: { id: 'someone-elses-file' } })
+        expect(getTaskAttachments).not.toHaveBeenCalled()
+
+        deleteHandler({ old: { id: mine.id } })
+        await waitFor(() => expect(getTaskAttachments).toHaveBeenCalledTimes(1))
+    })
+})

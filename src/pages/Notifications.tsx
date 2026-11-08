@@ -20,6 +20,9 @@ function Notifications() {
         loading,
         error,
         markingAllRead,
+        hasMore,
+        loadingMore,
+        loadMore,
         markAsRead,
         markAllAsRead,
     } = useNotifications(user?.id)
@@ -133,6 +136,21 @@ function Notifications() {
                         </div>
                     )}
                 </section>
+
+                {/* Notifications load in pages; fetch older ones on request. */}
+                {!loading && hasMore && (
+                    <div className="mt-4 flex justify-center">
+                        <button
+                            type="button"
+                            onClick={loadMore}
+                            disabled={loadingMore}
+                            className="flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white disabled:opacity-50"
+                        >
+                            {loadingMore && <LoaderCircle size={15} className="animate-spin" />}
+                            {loadingMore ? 'Loading...' : 'Load older notifications'}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     )

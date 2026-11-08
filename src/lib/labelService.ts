@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
+import { fetchAllRows } from './pagination'
 import { LABEL_COLORS, type LabelColor, type ProjectLabel } from '../types/app'
 
 export type TaskLabelLink = { task_id: string; label_id: string }
@@ -88,14 +89,16 @@ export async function getTaskLabelLinks(projectId: string): Promise<TaskLabelLin
 
     if (!projectId) throw new Error('Project ID is required.')
 
-    const { data, error } = await supabase
-        .from('task_labels')
-        .select('task_id, label_id')
-        .eq('project_id', projectId)
-
-    if (error) throw new Error(error.message)
-
-    return data || []
+    // Paged: a single request would silently stop at 1,000 links.
+    return fetchAllRows((from, to) =>
+        supabase
+            .from('task_labels')
+            .select('task_id, label_id')
+            .eq('project_id', projectId)
+            .order('task_id', { ascending: true })
+            .order('label_id', { ascending: true })
+            .range(from, to)
+    )
 }
 
 // Group links into { taskId: [labelId, ...] }.

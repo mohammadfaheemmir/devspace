@@ -39,6 +39,12 @@ function TaskAttachments({ projectId, taskId, currentUserId, isProjectAdmin, tas
     const [uploading, setUploading] = useState(false)
     const [busyId, setBusyId] = useState<string | null>(null)
 
+    // Latest list for the Realtime delete handler (created once per task).
+    const attachmentsRef = useRef(attachments)
+    useEffect(() => {
+        attachmentsRef.current = attachments
+    }, [attachments])
+
     // Load, and keep in sync when teammates add or remove files.
     useEffect(() => {
         let active = true
@@ -56,12 +62,17 @@ function TaskAttachments({ projectId, taskId, currentUserId, isProjectAdmin, tas
 
         load()
 
-        // DELETE events cannot be filtered by column, so they arrive
-        // unfiltered (RLS still limits them to visible rows).
+        // DELETE events cannot be filtered by column, and Supabase does not
+        // apply RLS to them, so deletes from every project arrive here (only
+        // their IDs). Reload only when one of this task's files was deleted.
+        function onDeleted(payload: { old: { id?: string } }) {
+            if (attachmentsRef.current.some((item) => item.id === payload.old.id)) load()
+        }
+
         const channel = supabase
             .channel(`task-attachments-${taskId}-${crypto.randomUUID()}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'task_attachments', filter: `task_id=eq.${taskId}` }, load)
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'task_attachments' }, load)
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'task_attachments' }, onDeleted)
             .subscribe()
 
         return () => {

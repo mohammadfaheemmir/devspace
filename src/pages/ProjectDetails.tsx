@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getErrorMessage } from '../lib/errors'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { Tables } from '../types/database'
@@ -84,6 +84,15 @@ function ProjectDetails({ projectId }: { projectId: string }) {
     // Labels: the project's labels and { taskId: [labelId, ...] }.
     const [labels, setLabels] = useState<ProjectLabel[]>([])
     const [labelIdsByTask, setLabelIdsByTask] = useState<Record<string, string[]>>({})
+
+    // Latest label state for the Realtime handlers below (they are created
+    // once per project, so they read current values through refs).
+    const labelsRef = useRef(labels)
+    const labelIdsByTaskRef = useRef(labelIdsByTask)
+    useEffect(() => {
+        labelsRef.current = labels
+        labelIdsByTaskRef.current = labelIdsByTask
+    }, [labels, labelIdsByTask])
     const [taskView, setTaskView] = useState<TaskView>('list')
 
     // Task search, filters and sorting.
@@ -126,14 +135,19 @@ function ProjectDetails({ projectId }: { projectId: string }) {
 
                 const user = await getCurrentUser()
 
+                // maybeSingle: a project the user cannot see (deleted, or not a
+                // member) comes back as null instead of a cryptic database error.
                 const { data: projectData, error: projectError } =
                     await supabase
                         .from('projects')
                         .select('*')
                         .eq('id', projectId)
-                        .single()
+                        .maybeSingle()
 
                 if (projectError) throw projectError
+                if (!projectData) {
+                    throw new Error("Project not found. It may have been deleted, or you don't have access to it.")
+                }
 
                 // Load essential workspace data first.
                 const [taskData, memberData] = await Promise.all([
@@ -299,15 +313,24 @@ function ProjectDetails({ projectId }: { projectId: string }) {
             }
         }
 
-        // DELETE events cannot be filtered by column in Supabase, so those
-        // arrive unfiltered (RLS still limits them to visible rows).
+        // DELETE events cannot be filtered by column, and Supabase does not
+        // apply RLS to them, so deletes from every project arrive here (only
+        // their IDs). Refresh only for deletes that concern this project.
+        function onLabelDeleted(payload: { old: { id?: string } }) {
+            if (labelsRef.current.some((label) => label.id === payload.old.id)) refreshLabels()
+        }
+        function onTaskLabelDeleted(payload: { old: { task_id?: string; label_id?: string } }) {
+            const { task_id: taskId, label_id: labelId } = payload.old
+            if (taskId && labelId && labelIdsByTaskRef.current[taskId]?.includes(labelId)) refreshLabels()
+        }
+
         const channel = supabase
             .channel(`project-labels-${projectId}-${crypto.randomUUID()}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'project_labels', filter: projectFilter }, refreshLabels)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'project_labels', filter: projectFilter }, refreshLabels)
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'project_labels' }, refreshLabels)
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'project_labels' }, onLabelDeleted)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'task_labels', filter: projectFilter }, refreshLabels)
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'task_labels' }, refreshLabels)
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'task_labels' }, onTaskLabelDeleted)
             .subscribe((status) => {
                 if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
                     console.error('Realtime labels subscription error:', status)

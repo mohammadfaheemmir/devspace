@@ -26,6 +26,9 @@ function mockHook(overrides: Partial<NotificationsApi> = {}) {
         markingAllRead: false,
         markAsRead: vi.fn().mockResolvedValue(true),
         markAllAsRead: vi.fn(),
+        hasMore: false,
+        loadingMore: false,
+        loadMore: vi.fn(),
         ...overrides,
     }
     vi.mocked(useNotifications).mockReturnValue(hook)
@@ -122,5 +125,23 @@ describe('Notifications page', () => {
 
         await user.click(screen.getByRole('button', { name: 'Unread (0)' }))
         expect(screen.getByText('No unread notifications')).toBeInTheDocument()
+    })
+})
+
+describe('Notifications page - older notifications', () => {
+    it('offers "Load older notifications" only when there are more', async () => {
+        const user = userEvent.setup()
+        const hook = mockHook({ hasMore: true })
+        renderPage()
+
+        await user.click(screen.getByRole('button', { name: 'Load older notifications' }))
+        expect(hook.loadMore).toHaveBeenCalled()
+    })
+
+    it('hides the button when everything is loaded', () => {
+        mockHook({ hasMore: false })
+        renderPage()
+
+        expect(screen.queryByRole('button', { name: 'Load older notifications' })).not.toBeInTheDocument()
     })
 })

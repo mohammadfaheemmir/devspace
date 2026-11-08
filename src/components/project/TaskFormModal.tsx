@@ -88,6 +88,10 @@ function TaskFormModal({
         task ? formFromTask(task) : EMPTY_TASK_FORM
     )
     const [saving, setSaving] = useState(false)
+    // Labels as they were when the dialog opened. Only the user's own
+    // additions and removals are saved, so a teammate's label change made
+    // while this dialog is open is not undone.
+    const [openingLabelIds] = useState<string[]>(initialLabelIds)
     const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>(initialLabelIds)
     const [deleting, setDeleting] = useState(false)
     const busy = saving || deleting
@@ -124,13 +128,16 @@ function TaskFormModal({
 
             // Labels are saved separately. If that fails, the task itself is
             // already saved, so say exactly what did not work.
-            const labelsChanged =
-                selectedLabelIds.length !== initialLabelIds.length ||
-                selectedLabelIds.some((id) => !initialLabelIds.includes(id))
+            const added = selectedLabelIds.filter((id) => !openingLabelIds.includes(id))
+            const removed = openingLabelIds.filter((id) => !selectedLabelIds.includes(id))
 
-            if (labelsChanged) {
+            if (added.length > 0 || removed.length > 0) {
                 try {
-                    const saved = await setTaskLabels(savedTask.id, projectId, initialLabelIds, selectedLabelIds)
+                    // Apply just this user's changes on top of the task's current
+                    // labels (which may include a teammate's recent changes).
+                    const current = initialLabelIds
+                    const next = [...current.filter((id) => !removed.includes(id)), ...added.filter((id) => !current.includes(id))]
+                    const saved = await setTaskLabels(savedTask.id, projectId, current, next)
                     onLabelsSaved?.(savedTask.id, saved)
                 } catch (labelError) {
                     onError(getErrorMessage(labelError, 'The task was saved, but its labels could not be updated.'))

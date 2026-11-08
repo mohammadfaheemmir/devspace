@@ -2,15 +2,27 @@ import { supabase } from './supabase'
 import { getCurrentUser } from './auth'
 import type { Notification } from '../types/app'
 
-// Fetch notifications for the logged-in user
-export async function getNotifications(): Promise<Notification[]> {
+export const NOTIFICATIONS_PAGE_SIZE = 50
+
+// Fetch the logged-in user's notifications, newest first, one page at a
+// time. Pass the oldest loaded notification's created_at as `before` to get
+// the next (older) page. Notifications are never deleted, so loading them
+// all at once would grow without limit.
+export async function getNotifications(
+    { before, limit = NOTIFICATIONS_PAGE_SIZE }: { before?: string; limit?: number } = {}
+): Promise<Notification[]> {
     const user = await getCurrentUser()
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
+        .limit(limit)
+
+    if (before) query = query.lt('created_at', before)
+
+    const { data, error } = await query
 
     if (error) {
         throw new Error(error.message)

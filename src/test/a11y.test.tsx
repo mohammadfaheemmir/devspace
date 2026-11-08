@@ -69,6 +69,9 @@ beforeEach(() => {
         markingAllRead: false,
         markAsRead: vi.fn(),
         markAllAsRead: vi.fn(),
+        hasMore: false,
+        loadingMore: false,
+        loadMore: vi.fn(),
     })
 })
 
