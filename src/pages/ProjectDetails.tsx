@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { getErrorMessage } from '../lib/errors'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { Tables } from '../types/database'
-import type { Project, ProjectMember, Task } from '../types/app'
+import type { Project, ProjectLabel, ProjectMember, Task } from '../types/app'
 import type { ProjectInvitation } from '../lib/invitationService'
 import type { ProjectActivity } from '../lib/activityService'
 import { useNavigate } from 'react-router-dom'
@@ -30,6 +30,7 @@ import { getProjectMembers } from '../lib/projectMemberService'
 import { getProjectInvitations } from '../lib/invitationService'
 
 import { getProjectActivities } from '../lib/activityService'
+import { getProjectLabels, getTaskLabelLinks, groupLabelIdsByTask } from '../lib/labelService'
 import { useTaskComments } from '../hooks/useTaskComments'
 import { useToast } from '../context/useToast'
 
@@ -38,6 +39,7 @@ import TaskCalendar from '../components/project/TaskCalendar'
 import TaskReminders from '../components/project/TaskReminders'
 import ProjectActivityFeed from '../components/project/ProjectActivityFeed'
 import ProjectSettingsPanel from '../components/project/ProjectSettingsPanel'
+import LabelManager from '../components/project/LabelManager'
 import ProjectMembersPanel from '../components/project/ProjectMembersPanel'
 import OwnershipTransferPanel from '../components/project/OwnershipTransferPanel'
 import ProjectDangerZone from '../components/project/ProjectDangerZone'
@@ -78,6 +80,10 @@ function ProjectDetails({ projectId }: { projectId: string }) {
     const [showTaskForm, setShowTaskForm] = useState(false)
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
     const [updatingTaskIds, setUpdatingTaskIds] = useState<string[]>([])
+
+    // Labels: the project's labels and { taskId: [labelId, ...] }.
+    const [labels, setLabels] = useState<ProjectLabel[]>([])
+    const [labelIdsByTask, setLabelIdsByTask] = useState<Record<string, string[]>>({})
     const [taskView, setTaskView] = useState<TaskView>('list')
 
     // Task search, filters and sorting.
@@ -155,6 +161,19 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                 setTasks(taskData)
                 setMembers(memberData)
                 setInvitations(invitationData)
+
+                // Labels are optional extras: a failure must not break the workspace.
+                try {
+                    const [labelData, linkData] = await Promise.all([
+                        getProjectLabels(projectId),
+                        getTaskLabelLinks(projectId),
+                    ])
+                    if (!active) return
+                    setLabels(labelData)
+                    setLabelIdsByTask(groupLabelIdsByTask(linkData))
+                } catch (labelErr) {
+                    console.error('Loading labels failed:', labelErr)
+                }
 
                 // Load activity separately so it cannot break the workspace.
                 try {
@@ -251,6 +270,47 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                         'Realtime activities subscription error:',
                         status
                     )
+                }
+            })
+
+        return () => {
+            active = false
+            supabase.removeChannel(channel)
+        }
+    }, [projectId])
+
+    // Real-time subscription for labels: refetch on any change, so teammates
+    // see new, deleted and re-assigned labels without refreshing.
+    useEffect(() => {
+        let active = true
+        const projectFilter = `project_id=eq.${projectId}`
+
+        async function refreshLabels() {
+            try {
+                const [labelData, linkData] = await Promise.all([
+                    getProjectLabels(projectId),
+                    getTaskLabelLinks(projectId),
+                ])
+                if (!active) return
+                setLabels(labelData)
+                setLabelIdsByTask(groupLabelIdsByTask(linkData))
+            } catch (err) {
+                console.error('Unable to refresh labels:', err)
+            }
+        }
+
+        // DELETE events cannot be filtered by column in Supabase, so those
+        // arrive unfiltered (RLS still limits them to visible rows).
+        const channel = supabase
+            .channel(`project-labels-${projectId}-${crypto.randomUUID()}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'project_labels', filter: projectFilter }, refreshLabels)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'project_labels', filter: projectFilter }, refreshLabels)
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'project_labels' }, refreshLabels)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'task_labels', filter: projectFilter }, refreshLabels)
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'task_labels' }, refreshLabels)
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.error('Realtime labels subscription error:', status)
                 }
             })
 
@@ -376,7 +436,23 @@ function ProjectDetails({ projectId }: { projectId: string }) {
     // Remove a deleted task and anything loaded for it.
     function handleTaskDeleted(taskId: string) {
         setTasks((previous) => previous.filter((task) => task.id !== taskId))
+        setLabelIdsByTask(({ [taskId]: _removed, ...rest }) => rest)
         forgetTask(taskId)
+    }
+
+    // Record a task's labels after the task form saved them.
+    function handleLabelsSaved(taskId: string, labelIds: string[]) {
+        setLabelIdsByTask((previous) => ({ ...previous, [taskId]: labelIds }))
+    }
+
+    // After labels are created or deleted; clear the filter if its label is gone.
+    function handleLabelsChange(nextLabels: ProjectLabel[]) {
+        setLabels(nextLabels)
+        setFilters((current) =>
+            current.label !== 'all' && !nextLabels.some((label) => label.id === current.label)
+                ? { ...current, label: 'all' }
+                : current
+        )
     }
 
     // Task creators and project owners/admins may delete a task.
@@ -457,7 +533,7 @@ function ProjectDetails({ projectId }: { projectId: string }) {
         (task) => task.status === 'done'
     ).length
 
-    const filteredTasks = filterAndSortTasks(tasks, filters)
+    const filteredTasks = filterAndSortTasks(tasks, filters, labelIdsByTask)
     const editingTask = tasks.find((task) => task.id === editingTaskId) || null
 
     function resetFilters() {
@@ -542,6 +618,15 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                     onProjectChange={setProject}
                     onError={notifyError}
                 />
+
+                {isProjectAdmin && (
+                    <LabelManager
+                        projectId={projectId}
+                        labels={labels}
+                        onLabelsChange={handleLabelsChange}
+                        onError={notifyError}
+                    />
+                )}
 
                 <ProjectMembersPanel
                     projectId={projectId}
@@ -680,6 +765,7 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                     members={members}
                     shownCount={filteredTasks.length}
                     totalCount={tasks.length}
+                    labels={labels}
                 />
 
                 {/* Task list or Kanban board */}
@@ -694,6 +780,8 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                         members={members}
                         onStatusChange={handleStatusChange}
                         updatingTaskIds={updatingTaskIds}
+                        labels={labels}
+                        labelIdsByTask={labelIdsByTask}
                         onEdit={(task) => setEditingTaskId(task.id)}
                     />
                 ) : (
@@ -739,6 +827,8 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                                     currentUserId={currentUserId}
                                     isProjectAdmin={isProjectAdmin}
                                     onEdit={() => setEditingTaskId(task.id)}
+                                    labels={labels}
+                                    labelIds={labelIdsByTask[task.id]}
                                 />
                             ))}
                         </div>
@@ -753,6 +843,8 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                         onSaved={handleTaskCreated}
                         onClose={() => setShowTaskForm(false)}
                         onError={notifyError}
+                        labels={labels}
+                        onLabelsSaved={handleLabelsSaved}
                     />
                 )}
 
@@ -768,6 +860,9 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                         onDeleted={handleTaskDeleted}
                         onClose={() => setEditingTaskId(null)}
                         onError={notifyError}
+                        labels={labels}
+                        initialLabelIds={labelIdsByTask[editingTask.id] ?? []}
+                        onLabelsSaved={handleLabelsSaved}
                     />
                 )}
             </div>

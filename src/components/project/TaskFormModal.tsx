@@ -7,7 +7,9 @@ import { useDismiss } from '../../hooks/useDismiss'
 import { useDialogFocus } from '../../hooks/useDialogFocus'
 import { getErrorMessage } from '../../lib/errors'
 import type { TaskInput } from '../../lib/taskService'
-import type { ProjectMember, Task } from '../../types/app'
+import type { ProjectLabel, ProjectMember, Task } from '../../types/app'
+import { setTaskLabels } from '../../lib/labelService'
+import { LABEL_STYLES } from './labelStyles'
 
 type TaskForm = {
     title: string
@@ -27,6 +29,12 @@ type TaskFormModalProps = {
     onDeleted?: (taskId: string) => void
     onClose: () => void
     onError: (message: string) => void
+    /** The project's labels; the Labels section is shown when there are any. */
+    labels?: ProjectLabel[]
+    /** Label IDs currently on the task (edit mode). */
+    initialLabelIds?: string[]
+    /** Called with the task's new label IDs after they are saved. */
+    onLabelsSaved?: (taskId: string, labelIds: string[]) => void
 }
 
 const EMPTY_TASK_FORM: TaskForm = {
@@ -62,6 +70,9 @@ function TaskFormModal({
     onDeleted,
     onClose,
     onError,
+    labels = [],
+    initialLabelIds = [],
+    onLabelsSaved,
 }: TaskFormModalProps) {
     const toast = useToast()
     const isEditing = Boolean(task)
@@ -70,6 +81,7 @@ function TaskFormModal({
         task ? formFromTask(task) : EMPTY_TASK_FORM
     )
     const [saving, setSaving] = useState(false)
+    const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>(initialLabelIds)
     const [deleting, setDeleting] = useState(false)
     const busy = saving || deleting
     const dialogRef = useRef(null)
@@ -102,6 +114,24 @@ function TaskFormModal({
                 : await createTask(projectId, input)
 
             onSaved(savedTask)
+
+            // Labels are saved separately. If that fails, the task itself is
+            // already saved, so say exactly what did not work.
+            const labelsChanged =
+                selectedLabelIds.length !== initialLabelIds.length ||
+                selectedLabelIds.some((id) => !initialLabelIds.includes(id))
+
+            if (labelsChanged) {
+                try {
+                    const saved = await setTaskLabels(savedTask.id, projectId, initialLabelIds, selectedLabelIds)
+                    onLabelsSaved?.(savedTask.id, saved)
+                } catch (labelError) {
+                    onError(getErrorMessage(labelError, 'The task was saved, but its labels could not be updated.'))
+                    onClose()
+                    return
+                }
+            }
+
             toast.success(isEditing ? 'Task updated.' : 'Task created.')
             onClose()
         } catch (err) {
@@ -233,6 +263,37 @@ function TaskFormModal({
                             </select>
                         </div>
                     </div>
+
+                    {labels.length > 0 && (
+                            <fieldset>
+                                <legend className="mb-2 block text-sm text-slate-300">Labels</legend>
+                                <div className="flex flex-wrap gap-2">
+                                    {labels.map((label) => {
+                                        const selected = selectedLabelIds.includes(label.id)
+                                        return (
+                                            <button
+                                                key={label.id}
+                                                type="button"
+                                                aria-pressed={selected}
+                                                onClick={() =>
+                                                    setSelectedLabelIds((current) =>
+                                                        selected
+                                                            ? current.filter((id) => id !== label.id)
+                                                            : [...current, label.id]
+                                                    )
+                                                }
+                                                className={`rounded-full border px-3 py-1 text-xs transition ${selected
+                                                    ? `${LABEL_STYLES[label.color].chip} ring-1 ring-white/40`
+                                                    : 'border-slate-700 text-slate-400 hover:text-white'
+                                                    }`}
+                                            >
+                                                {selected ? '✓ ' : ''}{label.name}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </fieldset>
+                        )}
 
                     <div>
                         <label htmlFor="task-due-date" className="block text-sm text-slate-300 mb-2">

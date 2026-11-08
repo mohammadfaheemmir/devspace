@@ -12,7 +12,8 @@ import {
     getPriorityBadgeClasses,
     isTaskOverdue,
 } from './taskUtils'
-import type { ProjectMember, Task, TaskStatus } from '../../types/app'
+import type { ProjectLabel, ProjectMember, Task, TaskStatus } from '../../types/app'
+import { TaskLabelList } from './LabelChip'
 
 type Column = { id: TaskStatus; title: string; icon: LucideIcon; color: string }
 
@@ -28,9 +29,11 @@ type TaskKanbanBoardProps = {
     onStatusChange: (taskId: string, status: string) => void
     onEdit?: (task: Task) => void
     updatingTaskIds?: string[]
+    labels?: ProjectLabel[]
+    labelIdsByTask?: Record<string, string[]>
 }
 
-function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, updatingTaskIds = [] }: TaskKanbanBoardProps) {
+function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, updatingTaskIds = [], labels = [], labelIdsByTask = {} }: TaskKanbanBoardProps) {
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
     const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null)
     const columns = COLUMNS
@@ -103,6 +106,9 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, upd
                                     {task.description && (
                                         <p className="mt-2 break-words text-sm text-slate-400">{task.description}</p>
                                     )}
+                                    <div className="mt-3">
+                                        <TaskLabelList labels={labels} labelIds={labelIdsByTask[task.id]} />
+                                    </div>
                                     <div className="mt-3 flex flex-wrap items-center gap-2">
                                         <span className={`rounded-full px-2.5 py-1 text-xs capitalize ${getPriorityBadgeClasses(task.priority)}`}>
                                             {task.priority || 'medium'} priority

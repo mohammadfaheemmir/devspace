@@ -1,6 +1,6 @@
 import type { ChangeEvent } from 'react'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
-import type { ProjectMember } from '../../types/app'
+import type { ProjectLabel, ProjectMember } from '../../types/app'
 import type { TaskFilters as TaskFilterValues } from './taskUtils'
 
 type TaskFiltersProps = {
@@ -10,13 +10,14 @@ type TaskFiltersProps = {
     members: ProjectMember[]
     shownCount: number
     totalCount: number
+    labels?: ProjectLabel[]
 }
 
 const selectClass =
     'w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-indigo-500'
 
 // Search box plus status / priority / assignee filters and sort order.
-function TaskFilters({ filters, onChange, onReset, members, shownCount, totalCount }: TaskFiltersProps) {
+function TaskFilters({ filters, onChange, onReset, members, shownCount, totalCount, labels = [] }: TaskFiltersProps) {
     function update(field: keyof TaskFilterValues) {
         // Each control only offers valid values for its field (see the <option>s below).
         return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -69,6 +70,17 @@ function TaskFilters({ filters, onChange, onReset, members, shownCount, totalCou
                         </option>
                     ))}
                 </select>
+
+                {labels.length > 0 && (
+                    <select value={filters.label} onChange={update('label')} aria-label="Filter by label" className={selectClass}>
+                        <option value="all">All labels</option>
+                        {labels.map((label) => (
+                            <option key={label.id} value={label.id}>
+                                {label.name}
+                            </option>
+                        ))}
+                    </select>
+                )}
 
                 <select value={filters.sort} onChange={update('sort')} aria-label="Sort tasks" className={selectClass}>
                     <option value="newest">Newest first</option>

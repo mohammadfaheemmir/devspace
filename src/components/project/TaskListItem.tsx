@@ -6,7 +6,8 @@ import {
     getPriorityBadgeClasses,
     isTaskOverdue,
 } from './taskUtils'
-import type { ProjectMember, Task } from '../../types/app'
+import type { ProjectLabel, ProjectMember, Task } from '../../types/app'
+import { TaskLabelList } from './LabelChip'
 import type { TaskCommentsApi } from '../../hooks/useTaskComments'
 
 type TaskListItemProps = {
@@ -19,6 +20,8 @@ type TaskListItemProps = {
     currentUserId: string | null
     isProjectAdmin: boolean
     onEdit: () => void
+    labels?: ProjectLabel[]
+    labelIds?: string[]
 }
 
 const selectClass =
@@ -35,6 +38,8 @@ function TaskListItem({
     currentUserId,
     isProjectAdmin,
     onEdit,
+    labels = [],
+    labelIds,
 }: TaskListItemProps) {
     const overdue = isTaskOverdue(task)
 
@@ -47,6 +52,10 @@ function TaskListItem({
                     {task.description && (
                         <p className="text-sm text-slate-400 mt-1 break-words">{task.description}</p>
                     )}
+
+                    <div className="mt-3">
+                        <TaskLabelList labels={labels} labelIds={labelIds} />
+                    </div>
 
                     <span className={`inline-block mt-3 text-xs px-3 py-1 rounded-full capitalize ${getPriorityBadgeClasses(task.priority)}`}>
                         {task.priority || 'medium'} priority
