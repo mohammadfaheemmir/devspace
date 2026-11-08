@@ -280,6 +280,7 @@ function TaskFormModal({
                             taskId={task.id}
                             currentUserId={currentUserId}
                             isProjectAdmin={isProjectAdmin}
+                            taskCreatedBy={task.created_by}
                             onError={onError}
                         />
                     )}

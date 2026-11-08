@@ -32,13 +32,14 @@ reviewed and approved before being applied to the live project.
   `task_attachments` table with access rules for files and records.
   (`f20f7f3`)
 
-### Known limitations
+### Changed
 
-- Supabase cannot delete files when database rows cascade, so the app
-  removes a task's or project's files before deleting it. If a regular
-  member deletes a task they created, files others attached to it cannot be
-  removed (only the uploader or an admin may delete a file) and remain in
-  storage.
+- A task's creator may now delete attachments on their task (previously
+  only the uploader or an owner/admin). Supabase cannot delete files when
+  database rows cascade, so the app removes a task's files before deleting
+  it; this closes the gap where files others attached stayed in storage
+  after a member deleted their own task. (migration
+  `20261109000200_attachment_task_creator_delete.sql`)
 
 ### Testing
 

@@ -48,6 +48,13 @@ describe('TaskAttachments', () => {
         expect(screen.queryByRole('button', { name: 'Delete photo.png' })).not.toBeInTheDocument()
     })
 
+    it('lets the task creator delete files others attached', async () => {
+        getTaskAttachments.mockResolvedValue([theirs])
+        renderSection({ taskCreatedBy: 'me' })
+
+        expect(await screen.findByRole('button', { name: 'Delete photo.png' })).toBeInTheDocument()
+    })
+
     it('lets admins delete anyone\'s files', async () => {
         getTaskAttachments.mockResolvedValue([theirs])
         renderSection({ isProjectAdmin: true })

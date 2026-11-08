@@ -19,6 +19,8 @@ type TaskAttachmentsProps = {
     taskId: string
     currentUserId: string | null
     isProjectAdmin: boolean
+    /** The task's creator may also delete its attachments. */
+    taskCreatedBy?: string | null
     onError: (message: string) => void
 }
 
@@ -29,7 +31,7 @@ function iconFor(mimeType: string) {
 }
 
 // Files attached to a task: list, upload, download and delete.
-function TaskAttachments({ projectId, taskId, currentUserId, isProjectAdmin, onError }: TaskAttachmentsProps) {
+function TaskAttachments({ projectId, taskId, currentUserId, isProjectAdmin, taskCreatedBy = null, onError }: TaskAttachmentsProps) {
     const toast = useToast()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [attachments, setAttachments] = useState<TaskAttachment[]>([])
@@ -163,7 +165,11 @@ function TaskAttachments({ projectId, taskId, currentUserId, isProjectAdmin, onE
                 <ul className="space-y-2">
                     {attachments.map((attachment) => {
                         const Icon = iconFor(attachment.mime_type)
-                        const canDelete = attachment.uploaded_by === currentUserId || isProjectAdmin
+                        // Mirrors the database rule: uploader, task creator, or owner/admin.
+                        const canDelete =
+                            attachment.uploaded_by === currentUserId ||
+                            (currentUserId !== null && taskCreatedBy === currentUserId) ||
+                            isProjectAdmin
                         const busy = busyId === attachment.id
 
                         return (
