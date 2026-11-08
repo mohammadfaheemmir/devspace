@@ -1,5 +1,7 @@
 # DevSpace
 
+[![CI](https://github.com/mohammadfaheemmir/devspace/actions/workflows/ci.yml/badge.svg)](https://github.com/mohammadfaheemmir/devspace/actions/workflows/ci.yml)
+
 A team project-management app: projects, tasks (list and Kanban board),
 comments, members and roles, invitations, an activity feed, due-date reminders
 and live updates.
@@ -46,6 +48,9 @@ Tests live next to the code they cover (`*.test.js` / `*.test.jsx`) and run with
 [Vitest](https://vitest.dev) and React Testing Library in a simulated browser.
 They never contact Supabase: the client gets dummy settings and services are
 mocked (see `src/test/`).
+
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, tests and the build on
+every push to `main` and on every pull request.
 
 ## Database
 
