@@ -1,7 +1,7 @@
 
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 
 function Signup() {
     const { signup } = useAuth()
@@ -19,8 +19,8 @@ function Signup() {
         setError('')
         setMessage('')
 
-        if (password.length < 6) {
-            setError('Password must contain at least 6 characters.')
+        if (password.length < 8) {
+            setError('Password must contain at least 8 characters.')
             return
         }
 
@@ -92,8 +92,8 @@ function Signup() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="At least 6 characters"
-                                minLength={6}
+                                placeholder="At least 8 characters"
+                                minLength={8}
                                 required
                                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-indigo-400"
                             />

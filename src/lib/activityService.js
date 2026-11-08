@@ -18,44 +18,7 @@ async function getCurrentUser() {
     return user
 }
 
-// Create a project activity record
-export async function createProjectActivity({
-    projectId,
-    taskId = null,
-    activityType,
-    description,
-    metadata = {},
-}) {
-    const user = await getCurrentUser()
-
-    if (!projectId) {
-        throw new Error('Project ID is required.')
-    }
-
-    if (!activityType || !description) {
-        throw new Error('Activity type and description are required.')
-    }
-
-    const { data, error } = await supabase
-        .from('project_activities')
-        .insert({
-            project_id: projectId,
-            actor_id: user.id,
-            task_id: taskId,
-            activity_type: activityType,
-            description,
-            metadata,
-        })
-        .select()
-        .single()
-
-    if (error) {
-        console.error('Create project activity error:', error)
-        throw new Error(error.message)
-    }
-
-    return data
-}
+// Note: activity records are created by database triggers, not by the client.
 
 // Fetch project activity history
 export async function getProjectActivities(projectId, limit = 50) {

@@ -90,7 +90,14 @@ function isTaskOverdue(task) {
     )
 }
 
-function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, updatingTaskId }) {
+// Shared priority badge colours so list and board views look the same.
+function getPriorityBadgeClasses(priority) {
+    if (priority === 'high') return 'bg-red-500/10 text-red-400'
+    if (priority === 'low') return 'bg-green-500/10 text-green-400'
+    return 'bg-yellow-500/10 text-yellow-400'
+}
+
+function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, updatingTaskIds = [] }) {
     const [draggedTaskId, setDraggedTaskId] = useState(null)
     const [dragOverColumn, setDragOverColumn] = useState(null)
 
@@ -154,7 +161,7 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, updatingTas
                             {columnTasks.map((task) => (
                                 <article
                                     key={task.id}
-                                    draggable={updatingTaskId !== task.id}
+                                    draggable={!updatingTaskIds.includes(task.id)}
                                     onDragStart={(event) => {
                                         event.dataTransfer.effectAllowed = 'move'
                                         event.dataTransfer.setData('text/plain', task.id)
@@ -165,19 +172,14 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, updatingTas
                                         setDragOverColumn(null)
                                     }}
                                     className={`rounded-lg border border-slate-700 bg-slate-950 p-4 transition hover:border-indigo-500 ${draggedTaskId === task.id ? 'opacity-40' : ''
-                                        } ${updatingTaskId === task.id ? 'opacity-60' : 'cursor-grab active:cursor-grabbing'}`}
+                                        } ${updatingTaskIds.includes(task.id) ? 'opacity-60' : 'cursor-grab active:cursor-grabbing'}`}
                                 >
                                     <h4 className="break-words font-medium text-slate-100">{task.title}</h4>
                                     {task.description && (
                                         <p className="mt-2 break-words text-sm text-slate-400">{task.description}</p>
                                     )}
                                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                                        <span className={`rounded-full px-2.5 py-1 text-xs capitalize ${task.priority === 'high'
-                                            ? 'bg-red-500/10 text-red-400'
-                                            : task.priority === 'low'
-                                                ? 'bg-green-500/10 text-green-400'
-                                                : 'bg-yellow-500/10 text-yellow-400'
-                                            }`}>
+                                        <span className={`rounded-full px-2.5 py-1 text-xs capitalize ${getPriorityBadgeClasses(task.priority)}`}>
                                             {task.priority || 'medium'} priority
                                         </span>
                                     </div>
@@ -199,7 +201,7 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, updatingTas
                                     </p>
                                     <select
                                         value={task.status}
-                                        disabled={updatingTaskId === task.id}
+                                        disabled={updatingTaskIds.includes(task.id)}
                                         onChange={(event) => onStatusChange(task.id, event.target.value)}
                                         className="mt-3 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300 outline-none focus:border-indigo-500 disabled:opacity-50"
                                         aria-label={`Change status for ${task.title}`}
@@ -241,7 +243,7 @@ function ProjectDetails() {
 
     const [showTaskForm, setShowTaskForm] = useState(false)
     const [saving, setSaving] = useState(false)
-    const [updatingTaskId, setUpdatingTaskId] = useState(null)
+    const [updatingTaskIds, setUpdatingTaskIds] = useState([])
     const [showNotifications, setShowNotifications] = useState(false)
     const [readNotificationIds, setReadNotificationIds] = useState(() => {
         try {
@@ -252,16 +254,28 @@ function ProjectDetails() {
         }
     })
 
+    // Save which reminders were read. Only IDs that still match an existing
+    // task and due date are kept, so storage does not grow forever.
     useEffect(() => {
+        if (loading) return
+
+        const validIds = new Set(
+            tasks
+                .filter((task) => task.due_date)
+                .map((task) => `${task.id}-${task.due_date}`)
+        )
+
         try {
             localStorage.setItem(
                 `task-notifications-read-${projectId}`,
-                JSON.stringify(readNotificationIds)
+                JSON.stringify(
+                    readNotificationIds.filter((id) => validIds.has(id))
+                )
             )
         } catch (storageError) {
             console.warn('Unable to save notification read state:', storageError)
         }
-    }, [readNotificationIds, projectId])
+    }, [readNotificationIds, projectId, tasks, loading])
 
     // Task search, filters and sorting.
     const [taskSearch, setTaskSearch] = useState('')
@@ -428,7 +442,7 @@ function ProjectDetails() {
         let active = true
 
         const channel = supabase
-            .channel(`project-activities-${projectId}`)
+            .channel(`project-activities-${projectId}-${crypto.randomUUID()}`)
             .on(
                 'postgres_changes',
                 {
@@ -485,7 +499,7 @@ function ProjectDetails() {
         let active = true
 
         const channel = supabase
-            .channel(`project-comments-${projectId}`)
+            .channel(`project-comments-${projectId}-${crypto.randomUUID()}`)
             .on(
                 'postgres_changes',
                 {
@@ -569,7 +583,7 @@ function ProjectDetails() {
         if (!projectId) return
 
         const channel = supabase
-            .channel(`project-tasks-${projectId}`)
+            .channel(`project-tasks-${projectId}-${crypto.randomUUID()}`)
             .on(
                 'postgres_changes',
                 {
@@ -706,54 +720,58 @@ function ProjectDetails() {
         }
     }
 
-    // Update task status.
-    async function handleStatusChange(taskId, newStatus) {
-        const previousTasks = tasks
+    // Apply a change to a single task in local state.
+    function patchTask(taskId, changes) {
+        setTasks((currentTasks) =>
+            currentTasks.map((task) =>
+                task.id === taskId ? { ...task, ...changes } : task
+            )
+        )
+    }
+
+    // Save one field of a task optimistically. Several tasks can be saved
+    // at the same time; if a save fails, only that task's field is rolled
+    // back, so changes from other edits or from teammates are kept.
+    async function saveTaskField(taskId, field, value, saveFn, errorMessage) {
+        const task = tasks.find((item) => item.id === taskId)
+        if (!task || updatingTaskIds.includes(taskId)) return
+
+        const previousValue = task[field]
+
+        setUpdatingTaskIds((ids) => [...ids, taskId])
+        setError('')
+        patchTask(taskId, { [field]: value })
 
         try {
-            setUpdatingTaskId(taskId)
-            setError('')
-
-            setTasks((currentTasks) =>
-                currentTasks.map((task) =>
-                    task.id === taskId
-                        ? { ...task, status: newStatus }
-                        : task
-                )
-            )
-
-            await updateTaskStatus(taskId, newStatus)
+            await saveFn(taskId, value)
         } catch (err) {
-            setTasks(previousTasks)
-            setError(err.message || 'Unable to update task status.')
+            patchTask(taskId, { [field]: previousValue })
+            setError(err.message || errorMessage)
         } finally {
-            setUpdatingTaskId(null)
+            setUpdatingTaskIds((ids) => ids.filter((id) => id !== taskId))
         }
     }
 
+    // Update task status.
+    function handleStatusChange(taskId, newStatus) {
+        return saveTaskField(
+            taskId,
+            'status',
+            newStatus,
+            updateTaskStatus,
+            'Unable to update task status.'
+        )
+    }
+
     // Assign a task to a project member.
-    async function handleAssigneeChange(taskId, assigneeId) {
-        const previousTasks = tasks
-
-        try {
-            setUpdatingTaskId(taskId)
-            setError('')
-
-            setTasks((currentTasks) =>
-                currentTasks.map((task) =>
-                    task.id === taskId
-                        ? { ...task, assignee_id: assigneeId || null }
-                        : task
-                )
-            )
-
-            await updateTaskAssignee(taskId, assigneeId || null)
-        } catch (err) {
-            setTasks(previousTasks)
-            setError(err.message || 'Unable to assign task.')
-        } finally {
-            setUpdatingTaskId(null)
-        }
+    function handleAssigneeChange(taskId, assigneeId) {
+        return saveTaskField(
+            taskId,
+            'assignee_id',
+            assigneeId || null,
+            updateTaskAssignee,
+            'Unable to assign task.'
+        )
     }
 
     // Create a project invitation.
@@ -2094,7 +2112,7 @@ function ProjectDetails() {
                         tasks={filteredTasks}
                         members={members}
                         onStatusChange={handleStatusChange}
-                        updatingTaskId={updatingTaskId}
+                        updatingTaskIds={updatingTaskIds}
                     />
                 ) : (
                     tasks.length === 0 ? (
@@ -2157,8 +2175,8 @@ function ProjectDetails() {
                                                     </p>
                                                 )}
 
-                                                <span className="inline-block mt-3 text-xs text-indigo-300 bg-indigo-500/10 px-3 py-1 rounded-full capitalize">
-                                                    {task.priority} priority
+                                                <span className={`inline-block mt-3 text-xs px-3 py-1 rounded-full capitalize ${getPriorityBadgeClasses(task.priority)}`}>
+                                                    {task.priority || 'medium'} priority
                                                 </span>
 
                                                 {task.due_date && (
@@ -2189,7 +2207,7 @@ function ProjectDetails() {
                                                 <select
                                                     value={task.status}
                                                     disabled={
-                                                        updatingTaskId === task.id
+                                                        updatingTaskIds.includes(task.id)
                                                     }
                                                     onChange={(e) =>
                                                         handleStatusChange(
@@ -2213,7 +2231,7 @@ function ProjectDetails() {
                                                 <select
                                                     value={task.assignee_id || ''}
                                                     disabled={
-                                                        updatingTaskId === task.id
+                                                        updatingTaskIds.includes(task.id)
                                                     }
                                                     onChange={(e) =>
                                                         handleAssigneeChange(
@@ -2237,7 +2255,7 @@ function ProjectDetails() {
                                                     ))}
                                                 </select>
 
-                                                {updatingTaskId === task.id && (
+                                                {updatingTaskIds.includes(task.id) && (
                                                     <span className="text-xs text-slate-400 self-center">
                                                         Saving...
                                                     </span>

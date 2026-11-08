@@ -14,6 +14,23 @@ async function getCurrentUser() {
     return user
 }
 
+// Work out the storage path of an avatar from its public URL.
+// Returns null if the URL is not a file in this user's avatar folder.
+function getAvatarPathFromUrl(avatarUrl, userId) {
+    if (!avatarUrl) return null
+
+    const marker = '/storage/v1/object/public/avatars/'
+    const markerIndex = avatarUrl.indexOf(marker)
+
+    if (markerIndex === -1) return null
+
+    const filePath = decodeURIComponent(
+        avatarUrl.slice(markerIndex + marker.length).split('?')[0]
+    )
+
+    return filePath.startsWith(`${userId}/`) ? filePath : null
+}
+
 // Fetch the current user's profile
 export async function getMyProfile() {
     const user = await getCurrentUser()
@@ -72,6 +89,18 @@ export async function uploadMyAvatar(file) {
         throw new Error('Image size must be less than 2 MB.')
     }
 
+    // Remember the current avatar so it can be cleaned up after the swap.
+    const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single()
+
+    const previousAvatarPath = getAvatarPathFromUrl(
+        currentProfile?.avatar_url,
+        user.id
+    )
+
     const extension = file.type.split('/')[1].replace('jpeg', 'jpg')
     const filePath = `${user.id}/avatar-${Date.now()}.${extension}`
 
@@ -104,6 +133,18 @@ export async function uploadMyAvatar(file) {
         throw new Error(profileError.message)
     }
 
+    // Delete the old file so storage does not fill up with unused images.
+    // A failure here is not fatal: the new avatar is already saved.
+    if (previousAvatarPath && previousAvatarPath !== filePath) {
+        const { error: cleanupError } = await supabase.storage
+            .from('avatars')
+            .remove([previousAvatarPath])
+
+        if (cleanupError) {
+            console.warn('Unable to delete previous avatar:', cleanupError.message)
+        }
+    }
+
     return avatarUrl
 }
 
@@ -121,27 +162,10 @@ export async function removeMyAvatar() {
 
     if (!profile.avatar_url) return true
 
-    const marker = '/storage/v1/object/public/avatars/'
-    const markerIndex = profile.avatar_url.indexOf(marker)
+    const filePath = getAvatarPathFromUrl(profile.avatar_url, user.id)
 
-    if (markerIndex === -1) {
-        throw new Error('Could not identify the stored avatar file.')
-    }
-
-    const filePath = decodeURIComponent(
-        profile.avatar_url.slice(markerIndex + marker.length).split('?')[0]
-    )
-
-    if (!filePath.startsWith(`${user.id}/`)) {
-        throw new Error('Avatar path does not belong to your account.')
-    }
-
-    const { error: deleteError } = await supabase.storage
-        .from('avatars')
-        .remove([filePath])
-
-    if (deleteError) throw new Error(deleteError.message)
-
+    // Clear the profile first. If this fails, the image is still intact,
+    // so the profile never points at a deleted file.
     const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -151,6 +175,16 @@ export async function removeMyAvatar() {
         .eq('id', user.id)
 
     if (updateError) throw new Error(updateError.message)
+
+    if (filePath) {
+        const { error: deleteError } = await supabase.storage
+            .from('avatars')
+            .remove([filePath])
+
+        if (deleteError) {
+            console.warn('Unable to delete avatar file:', deleteError.message)
+        }
+    }
 
     return true
 }

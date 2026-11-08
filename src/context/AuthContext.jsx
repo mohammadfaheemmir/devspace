@@ -1,24 +1,40 @@
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './useAuth'
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Get the existing session when the app loads
+        let active = true
+
+        // Get the existing session when the app loads.
+        // Always clear the loading state, even if the request fails,
+        // so the app never gets stuck on the loading screen.
         const getSession = async () => {
-            const { data, error } = await supabase.auth.getSession()
+            try {
+                const { data, error } = await supabase.auth.getSession()
 
-            if (error) {
-                console.error('Session error:', error.message)
+                if (error) {
+                    console.error('Session error:', error.message)
+                }
+
+                if (active) {
+                    setUser(data?.session?.user ?? null)
+                }
+            } catch (err) {
+                console.error('Unable to restore session:', err)
+
+                if (active) {
+                    setUser(null)
+                }
+            } finally {
+                if (active) {
+                    setLoading(false)
+                }
             }
-
-            setUser(data.session?.user ?? null)
-            setLoading(false)
         }
 
         getSession()
@@ -27,10 +43,16 @@ export function AuthProvider({ children }) {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (!active) return
+
             setUser(session?.user ?? null)
+            setLoading(false)
         })
 
-        return () => subscription.unsubscribe()
+        return () => {
+            active = false
+            subscription.unsubscribe()
+        }
     }, [])
 
     // Register a new user
@@ -71,8 +93,4 @@ export function AuthProvider({ children }) {
             {children}
         </AuthContext.Provider>
     )
-}
-
-export function useAuth() {
-    return useContext(AuthContext)
 }

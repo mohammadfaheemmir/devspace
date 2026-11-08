@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import {
     Plus,
@@ -15,10 +15,9 @@ import {
     Clock,
     Bell,
     CheckCheck,
-    UserRound,
 } from 'lucide-react'
 
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 
 import {
     getProjects,
@@ -36,6 +35,8 @@ import {
     markAllNotificationsAsRead,
 } from '../lib/notificationService'
 
+import { getMyProfile } from '../lib/profileService'
+
 
 function formatNotificationDate(date) {
     return new Date(date).toLocaleString([], {
@@ -48,6 +49,15 @@ function formatNotificationDate(date) {
 function Dashboard() {
     const { user, logout } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
+
+    // One-time message passed from another page, e.g. after deleting a project.
+    const [flashMessage, setFlashMessage] = useState(
+        () => location.state?.message || ''
+    )
+
+    // Profile from the profiles table (kept up to date by Profile Settings).
+    const [profile, setProfile] = useState(null)
 
     const [projects, setProjects] = useState([])
     const [invitations, setInvitations] = useState([])
@@ -61,7 +71,6 @@ function Dashboard() {
 
     const [error, setError] = useState('')
     const [invitationError, setInvitationError] = useState('')
-    const [invitationSuccess, setInvitationSuccess] = useState('')
 
     const [projectName, setProjectName] = useState('')
     const [description, setDescription] = useState('')
@@ -77,13 +86,40 @@ function Dashboard() {
         (notification) => !notification.is_read
     ).length
 
-    // Profile display information
+    // Profile display information. Prefer the profiles table, which is
+    // what Profile Settings updates; fall back to signup metadata.
     const displayName =
+        profile?.full_name ||
         user?.user_metadata?.full_name ||
         user?.email?.split('@')[0] ||
         'User'
 
     const profileInitial = displayName.charAt(0).toUpperCase()
+
+    // Clear the one-time message from browser history so it does not
+    // reappear on refresh or when navigating back.
+    useEffect(() => {
+        if (location.state?.message) {
+            navigate(location.pathname, { replace: true, state: null })
+        }
+    }, [location.pathname, location.state, navigate])
+
+    // Fetch the user's profile (name and avatar)
+    useEffect(() => {
+        let active = true
+
+        getMyProfile()
+            .then((data) => {
+                if (active) setProfile(data)
+            })
+            .catch((err) => {
+                console.error('Loading profile failed:', err)
+            })
+
+        return () => {
+            active = false
+        }
+    }, [])
 
     // Fetch projects
     useEffect(() => {
@@ -165,8 +201,10 @@ function Dashboard() {
             }
         }
 
+        // A unique channel name per mount avoids reusing a channel that is
+        // still closing from a previous mount (e.g. React StrictMode in dev).
         const channel = supabase
-            .channel(`user-notifications-${user.id}`)
+            .channel(`user-notifications-${user.id}-${crypto.randomUUID()}`)
             .on(
                 'postgres_changes',
                 {
@@ -270,7 +308,6 @@ function Dashboard() {
     // Accept an invitation
     const handleAcceptInvitation = async (invitation) => {
         setInvitationError('')
-        setInvitationSuccess('')
         setAcceptingInvitation(invitation.invitation_id)
 
         try {
@@ -284,10 +321,7 @@ function Dashboard() {
                 )
             )
 
-            setInvitationSuccess(
-                `You have successfully joined ${invitation.project_name}.`
-            )
-
+            // Go straight to the project the user just joined.
             navigate(`/projects/${projectId}`)
         } catch (err) {
             console.error('Accept invitation failed:', err)
@@ -557,8 +591,16 @@ function Dashboard() {
                             aria-label="Open Profile Settings"
                             className="flex items-center gap-2 rounded-lg border border-slate-700 p-2 transition hover:border-indigo-500 hover:bg-slate-800 sm:px-3"
                         >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold text-white">
-                                {profileInitial}
+                            <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-indigo-500 text-sm font-bold text-white">
+                                {profile?.avatar_url ? (
+                                    <img
+                                        src={profile.avatar_url}
+                                        alt=""
+                                        className="h-full w-full object-cover"
+                                    />
+                                ) : (
+                                    profileInitial
+                                )}
                             </span>
 
                             <span className="hidden text-sm font-medium text-slate-300 sm:block">
@@ -610,6 +652,23 @@ function Dashboard() {
                     </button>
 
                 </div>
+
+                {/* One-time success message (e.g. after deleting a project) */}
+                {flashMessage && (
+                    <div
+                        role="status"
+                        className="mt-6 flex items-start justify-between gap-3 rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-400"
+                    >
+                        <p>{flashMessage}</p>
+
+                        <button
+                            onClick={() => setFlashMessage('')}
+                            aria-label="Dismiss message"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+                )}
 
                 {/* General error message */}
                 {error && (
@@ -664,12 +723,6 @@ function Dashboard() {
                             >
                                 <X size={18} />
                             </button>
-                        </div>
-                    )}
-
-                    {invitationSuccess && (
-                        <div className="mb-5 rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-400">
-                            {invitationSuccess}
                         </div>
                     )}
 

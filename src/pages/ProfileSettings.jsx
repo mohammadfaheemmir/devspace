@@ -50,7 +50,8 @@ function ProfileSettings() {
 
                 setProfile(data)
                 setFullName(data.full_name || '')
-                setEmail(data.email || '')
+                // Leave the "new email" field empty; the current email
+                // is shown separately in a read-only field.
             } catch (err) {
                 setError(err.message || 'Unable to load your profile.')
             } finally {
@@ -160,6 +161,7 @@ function ProfileSettings() {
 
             await updateMyEmail(email)
 
+            setEmail('')
             showMessage(
                 'Email change requested. Check your inbox for the verification email and follow its instructions.'
             )

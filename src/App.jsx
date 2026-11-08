@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 
 import Login from './pages/Login'
 import Signup from './pages/Signup'
@@ -8,14 +8,24 @@ import ProjectDetails from './pages/ProjectDetails'
 import ProfileSettings from './pages/ProfileSettings'
 
 import ProtectedRoute from './components/ProtectedRoute'
+import PublicOnlyRoute from './components/PublicOnlyRoute'
+
+// Remount the project page when the project ID changes, so no state
+// from one project carries over into another.
+function ProjectDetailsRoute() {
+  const { projectId } = useParams()
+  return <ProjectDetails key={projectId} />
+}
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        {/* Public routes (signed-out visitors only) */}
+        <Route element={<PublicOnlyRoute />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+        </Route>
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
@@ -30,7 +40,7 @@ function App() {
 
           <Route
             path="/projects/:projectId"
-            element={<ProjectDetails />}
+            element={<ProjectDetailsRoute />}
           />
         </Route>
 
