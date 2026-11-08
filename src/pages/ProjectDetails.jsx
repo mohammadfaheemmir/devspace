@@ -15,19 +15,8 @@ import {
     Send,
     Trash2,
     MessageCircle,
-    Activity,
-    UserPlus,
-    UserCheck,
-    UserMinus,
-    ListTodo,
-    RefreshCw,
-    LoaderCircle,
     Search,
     SlidersHorizontal,
-    Bell,
-    AlertCircle,
-    CalendarClock,
-    CheckCheck,
 } from 'lucide-react'
 
 import { supabase } from '../lib/supabase'
@@ -63,168 +52,15 @@ import {
 import { getProjectActivities } from '../lib/activityService'
 import { deleteProject, updateProject } from '../lib/projectService'
 
-// Date-only helpers avoid timezone shifts when parsing Supabase DATE values.
-function getLocalDateString() {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-}
-
-function formatDueDate(dateValue) {
-    if (!dateValue) return ''
-    const [year, month, day] = String(dateValue).split('-').map(Number)
-    if (!year || !month || !day) return String(dateValue)
-    return new Intl.DateTimeFormat(undefined, {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-    }).format(new Date(year, month - 1, day))
-}
-
-function isTaskOverdue(task) {
-    return Boolean(
-        task.due_date &&
-        task.status !== 'done' &&
-        task.due_date < getLocalDateString()
-    )
-}
-
-// Shared priority badge colours so list and board views look the same.
-function getPriorityBadgeClasses(priority) {
-    if (priority === 'high') return 'bg-red-500/10 text-red-400'
-    if (priority === 'low') return 'bg-green-500/10 text-green-400'
-    return 'bg-yellow-500/10 text-yellow-400'
-}
-
-function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, updatingTaskIds = [] }) {
-    const [draggedTaskId, setDraggedTaskId] = useState(null)
-    const [dragOverColumn, setDragOverColumn] = useState(null)
-
-    const columns = [
-        { id: 'todo', title: 'To Do', icon: Circle, color: 'text-slate-400' },
-        { id: 'in_progress', title: 'In Progress', icon: Clock3, color: 'text-yellow-400' },
-        { id: 'done', title: 'Done', icon: CheckCircle2, color: 'text-green-400' },
-    ]
-
-    function getMemberName(userId) {
-        const member = members.find((item) => item.user_id === userId)
-        return member?.full_name || 'Unknown member'
-    }
-
-    function handleDrop(status) {
-        if (!draggedTaskId) return
-        const task = tasks.find((item) => item.id === draggedTaskId)
-        if (task && task.status !== status) onStatusChange(task.id, status)
-        setDraggedTaskId(null)
-        setDragOverColumn(null)
-    }
-
-    return (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {columns.map((column) => {
-                const Icon = column.icon
-                const columnTasks = tasks.filter((task) => task.status === column.id)
-
-                return (
-                    <section
-                        key={column.id}
-                        onDragOver={(event) => {
-                            event.preventDefault()
-                            setDragOverColumn(column.id)
-                        }}
-                        onDragLeave={(event) => {
-                            if (!event.currentTarget.contains(event.relatedTarget)) {
-                                setDragOverColumn(null)
-                            }
-                        }}
-                        onDrop={(event) => {
-                            event.preventDefault()
-                            handleDrop(column.id)
-                        }}
-                        className={`min-h-[300px] rounded-xl border p-4 transition ${dragOverColumn === column.id
-                            ? 'border-indigo-500 bg-indigo-500/10'
-                            : 'border-slate-800 bg-slate-900'
-                            }`}
-                    >
-                        <div className="mb-4 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Icon size={19} className={column.color} />
-                                <h3 className="font-semibold">{column.title}</h3>
-                            </div>
-                            <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
-                                {columnTasks.length}
-                            </span>
-                        </div>
-
-                        <div className="space-y-3">
-                            {columnTasks.map((task) => (
-                                <article
-                                    key={task.id}
-                                    draggable={!updatingTaskIds.includes(task.id)}
-                                    onDragStart={(event) => {
-                                        event.dataTransfer.effectAllowed = 'move'
-                                        event.dataTransfer.setData('text/plain', task.id)
-                                        setDraggedTaskId(task.id)
-                                    }}
-                                    onDragEnd={() => {
-                                        setDraggedTaskId(null)
-                                        setDragOverColumn(null)
-                                    }}
-                                    className={`rounded-lg border border-slate-700 bg-slate-950 p-4 transition hover:border-indigo-500 ${draggedTaskId === task.id ? 'opacity-40' : ''
-                                        } ${updatingTaskIds.includes(task.id) ? 'opacity-60' : 'cursor-grab active:cursor-grabbing'}`}
-                                >
-                                    <h4 className="break-words font-medium text-slate-100">{task.title}</h4>
-                                    {task.description && (
-                                        <p className="mt-2 break-words text-sm text-slate-400">{task.description}</p>
-                                    )}
-                                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                                        <span className={`rounded-full px-2.5 py-1 text-xs capitalize ${getPriorityBadgeClasses(task.priority)}`}>
-                                            {task.priority || 'medium'} priority
-                                        </span>
-                                    </div>
-                                    {task.due_date && (
-                                        <p className={`mt-3 flex items-center gap-2 text-xs ${isTaskOverdue(task)
-                                            ? 'text-red-400'
-                                            : task.status === 'done'
-                                                ? 'text-green-400'
-                                                : 'text-slate-400'
-                                            }`}>
-                                            <Clock3 size={14} />
-                                            {isTaskOverdue(task)
-                                                ? `Overdue · ${formatDueDate(task.due_date)}`
-                                                : `Due ${formatDueDate(task.due_date)}`}
-                                        </p>
-                                    )}
-                                    <p className="mt-3 text-xs text-slate-400">
-                                        Assigned to: {task.assignee_id ? getMemberName(task.assignee_id) : 'Unassigned'}
-                                    </p>
-                                    <select
-                                        value={task.status}
-                                        disabled={updatingTaskIds.includes(task.id)}
-                                        onChange={(event) => onStatusChange(task.id, event.target.value)}
-                                        className="mt-3 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300 outline-none focus:border-indigo-500 disabled:opacity-50"
-                                        aria-label={`Change status for ${task.title}`}
-                                    >
-                                        <option value="todo">To Do</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="done">Done</option>
-                                    </select>
-                                </article>
-                            ))}
-                            {columnTasks.length === 0 && (
-                                <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">
-                                    No tasks in this column
-                                </div>
-                            )}
-                        </div>
-                    </section>
-                )
-            })}
-        </div>
-    )
-}
+import TaskKanbanBoard from '../components/project/TaskKanbanBoard'
+import TaskReminders from '../components/project/TaskReminders'
+import ProjectActivityFeed from '../components/project/ProjectActivityFeed'
+import {
+    formatDueDate,
+    getLocalDateString,
+    getPriorityBadgeClasses,
+    isTaskOverdue,
+} from '../components/project/taskUtils'
 
 function ProjectDetails() {
     const { projectId } = useParams()
@@ -245,39 +81,6 @@ function ProjectDetails() {
     const [showTaskForm, setShowTaskForm] = useState(false)
     const [saving, setSaving] = useState(false)
     const [updatingTaskIds, setUpdatingTaskIds] = useState([])
-    const [showNotifications, setShowNotifications] = useState(false)
-    const [readNotificationIds, setReadNotificationIds] = useState(() => {
-        try {
-            const saved = localStorage.getItem(`task-notifications-read-${projectId}`)
-            return saved ? JSON.parse(saved) : []
-        } catch {
-            return []
-        }
-    })
-
-    // Save which reminders were read. Only IDs that still match an existing
-    // task and due date are kept, so storage does not grow forever.
-    useEffect(() => {
-        if (loading) return
-
-        const validIds = new Set(
-            tasks
-                .filter((task) => task.due_date)
-                .map((task) => `${task.id}-${task.due_date}`)
-        )
-
-        try {
-            localStorage.setItem(
-                `task-notifications-read-${projectId}`,
-                JSON.stringify(
-                    readNotificationIds.filter((id) => validIds.has(id))
-                )
-            )
-        } catch (storageError) {
-            console.warn('Unable to save notification read state:', storageError)
-        }
-    }, [readNotificationIds, projectId, tasks, loading])
-
     // Task search, filters and sorting.
     const [taskSearch, setTaskSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
@@ -1199,49 +1002,6 @@ function ProjectDetails() {
             return (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0)
         })
 
-    // Build reminders from tasks due today, within the next three days, or overdue.
-    // These are derived from existing task data, so no database migration is needed.
-    const today = getLocalDateString()
-    const taskNotifications = tasks
-        .filter((task) => task.due_date && task.status !== 'done')
-        .map((task) => {
-            const daysUntilDue = Math.round(
-                (new Date(`${task.due_date}T12:00:00`).getTime() -
-                    new Date(`${today}T12:00:00`).getTime()) /
-                86400000
-            )
-
-            return {
-                id: `${task.id}-${task.due_date}`,
-                task,
-                daysUntilDue,
-                type: daysUntilDue < 0 ? 'overdue' : 'upcoming',
-            }
-        })
-        .filter((notification) => notification.daysUntilDue <= 3)
-        .sort((a, b) => a.daysUntilDue - b.daysUntilDue)
-
-    const unreadNotificationCount = taskNotifications.filter(
-        (notification) => !readNotificationIds.includes(notification.id)
-    ).length
-
-    function markNotificationAsRead(notificationId) {
-        setReadNotificationIds((previous) =>
-            previous.includes(notificationId)
-                ? previous
-                : [...previous, notificationId]
-        )
-    }
-
-    function markAllNotificationsAsRead() {
-        setReadNotificationIds((previous) => [
-            ...new Set([
-                ...previous,
-                ...taskNotifications.map((notification) => notification.id),
-            ]),
-        ])
-    }
-
     // Find member name using user ID.
     function getMemberName(userId) {
         const member = members.find(
@@ -1249,52 +1009,6 @@ function ProjectDetails() {
         )
 
         return member?.full_name || 'Unknown member'
-    }
-
-    // Activity icon.
-    function getActivityIcon(type) {
-        switch (type) {
-            case 'project_created':
-                return <ClipboardList size={18} />
-            case 'task_created':
-                return <ListTodo size={18} />
-            case 'task_assigned':
-                return <UserPlus size={18} />
-            case 'task_unassigned':
-                return <UserMinus size={18} />
-            case 'task_status_changed':
-                return <RefreshCw size={18} />
-            case 'comment_added':
-                return <MessageCircle size={18} />
-            case 'member_invited':
-                return <Mail size={18} />
-            case 'member_joined':
-                return <UserCheck size={18} />
-            default:
-                return <Activity size={18} />
-        }
-    }
-
-    function getActivityColor(type) {
-        switch (type) {
-            case 'project_created':
-                return 'bg-indigo-500/15 text-indigo-400'
-            case 'task_created':
-                return 'bg-blue-500/15 text-blue-400'
-            case 'task_assigned':
-            case 'member_invited':
-                return 'bg-purple-500/15 text-purple-400'
-            case 'task_unassigned':
-                return 'bg-orange-500/15 text-orange-400'
-            case 'task_status_changed':
-                return 'bg-cyan-500/15 text-cyan-400'
-            case 'comment_added':
-                return 'bg-pink-500/15 text-pink-400'
-            case 'member_joined':
-                return 'bg-green-500/15 text-green-400'
-            default:
-                return 'bg-slate-700 text-slate-300'
-        }
     }
 
     if (loading) {
@@ -1351,81 +1065,12 @@ function ProjectDetails() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setShowNotifications((previous) => !previous)}
-                                aria-label={`Task notifications${unreadNotificationCount ? `, ${unreadNotificationCount} unread` : ''}`}
-                                aria-expanded={showNotifications}
-                                className="relative flex h-12 w-12 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-slate-300 transition hover:border-indigo-500 hover:text-white"
-                            >
-                                <Bell size={20} />
-                                {unreadNotificationCount > 0 && (
-                                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                                    </span>
-                                )}
-                            </button>
-
-                            {showNotifications && (
-                                <div className="absolute right-0 z-50 mt-3 w-96 max-w-[calc(100vw-3rem)] overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
-                                    <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-                                        <div>
-                                            <h3 className="font-semibold text-white">Task reminders</h3>
-                                            <p className="mt-0.5 text-xs text-slate-400">Due soon and overdue tasks</p>
-                                        </div>
-                                        {unreadNotificationCount > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={markAllNotificationsAsRead}
-                                                className="text-xs font-medium text-indigo-400 hover:text-indigo-300"
-                                            >
-                                                Mark all read
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    <div className="max-h-96 overflow-y-auto">
-                                        {taskNotifications.length === 0 ? (
-                                            <div className="px-5 py-8 text-center">
-                                                <CheckCheck size={25} className="mx-auto mb-2 text-green-400" />
-                                                <p className="text-sm font-medium text-slate-200">You're all caught up</p>
-                                                <p className="mt-1 text-xs text-slate-500">No tasks are due in the next three days.</p>
-                                            </div>
-                                        ) : (
-                                            taskNotifications.map((notification) => {
-                                                const isRead = readNotificationIds.includes(notification.id)
-                                                const isOverdue = notification.type === 'overdue'
-                                                const dueLabel = isOverdue
-                                                    ? `Overdue by ${Math.abs(notification.daysUntilDue)} ${Math.abs(notification.daysUntilDue) === 1 ? 'day' : 'days'}`
-                                                    : notification.daysUntilDue === 0
-                                                        ? 'Due today'
-                                                        : `Due in ${notification.daysUntilDue} ${notification.daysUntilDue === 1 ? 'day' : 'days'}`
-
-                                                return (
-                                                    <button
-                                                        type="button"
-                                                        key={notification.id}
-                                                        onClick={() => markNotificationAsRead(notification.id)}
-                                                        className={`flex w-full gap-3 border-b border-slate-800 px-4 py-3 text-left transition hover:bg-slate-800/70 ${isRead ? 'opacity-65' : 'bg-slate-800/30'}`}
-                                                    >
-                                                        <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isOverdue ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                                                            {isOverdue ? <AlertCircle size={18} /> : <CalendarClock size={18} />}
-                                                        </span>
-                                                        <span className="min-w-0 flex-1">
-                                                            <span className="block break-words text-sm font-medium text-slate-100">{notification.task.title}</span>
-                                                            <span className={`mt-1 block text-xs ${isOverdue ? 'text-red-400' : 'text-amber-400'}`}>{dueLabel} · {formatDueDate(notification.task.due_date)}</span>
-                                                            <span className="mt-1 block text-xs text-slate-500">{project.name}</span>
-                                                        </span>
-                                                        {!isRead && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-indigo-400" />}
-                                                    </button>
-                                                )
-                                            })
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <TaskReminders
+                            projectId={projectId}
+                            projectName={project.name}
+                            tasks={tasks}
+                            tasksLoaded={!loading}
+                        />
 
                         <button
                             onClick={() => setShowTaskForm(true)}
@@ -1813,144 +1458,13 @@ function ProjectDetails() {
                     </div>
                 )}
 
-                {/* Project Activity Feed */}
-                <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                        <div className="flex items-center gap-3">
-                            <Activity
-                                className="text-indigo-400"
-                                size={22}
-                            />
-
-                            <div>
-                                <h2 className="text-lg font-semibold">
-                                    Project Activity
-                                </h2>
-
-                                <p className="text-xs text-slate-400 mt-1">
-                                    Stay updated with what's happening in
-                                    this project.
-                                </p>
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={refreshActivities}
-                            disabled={loadingActivities}
-                            className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
-                        >
-                            {loadingActivities ? (
-                                <LoaderCircle
-                                    size={15}
-                                    className="animate-spin"
-                                />
-                            ) : (
-                                <RefreshCw size={15} />
-                            )}
-                            Refresh
-                        </button>
-                    </div>
-
-                    {activityError && (
-                        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-                            {activityError}
-                        </div>
-                    )}
-
-                    {loadingActivities ? (
-                        <div className="flex items-center justify-center gap-3 py-10 text-sm text-slate-400">
-                            <LoaderCircle
-                                size={19}
-                                className="animate-spin"
-                            />
-                            Loading project activity...
-                        </div>
-                    ) : activities.length === 0 ? (
-                        <div className="py-10 text-center">
-                            <Activity
-                                size={34}
-                                className="mx-auto mb-3 text-slate-600"
-                            />
-
-                            <h3 className="font-medium text-slate-300">
-                                No activity yet
-                            </h3>
-
-                            <p className="mt-2 text-sm text-slate-500">
-                                Project updates will appear here as your
-                                team works.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="relative">
-                            <div className="absolute left-[17px] top-5 bottom-5 w-px bg-slate-800" />
-
-                            <div className="space-y-5">
-                                {activities.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="relative flex gap-4"
-                                    >
-                                        <div
-                                            className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${getActivityColor(
-                                                item.activity_type
-                                            )}`}
-                                        >
-                                            {getActivityIcon(
-                                                item.activity_type
-                                            )}
-                                        </div>
-
-                                        <div className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 p-4">
-                                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                                                {item.actor_avatar ? (
-                                                    <img
-                                                        src={item.actor_avatar}
-                                                        alt=""
-                                                        className="h-6 w-6 rounded-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-slate-400">
-                                                        <UserRound size={13} />
-                                                    </div>
-                                                )}
-
-                                                <span className="text-sm font-medium text-slate-200">
-                                                    {item.actor_name ||
-                                                        'A team member'}
-                                                </span>
-
-                                                {item.actor_id ===
-                                                    currentUserId && (
-                                                        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs text-indigo-300">
-                                                            You
-                                                        </span>
-                                                    )}
-                                            </div>
-
-                                            <p className="text-sm leading-6 text-slate-300 break-words">
-                                                {item.description}
-                                            </p>
-
-                                            {item.task_title && (
-                                                <p className="mt-2 text-xs text-indigo-300">
-                                                    Task: {item.task_title}
-                                                </p>
-                                            )}
-
-                                            <p className="mt-3 text-xs text-slate-500">
-                                                {new Date(
-                                                    item.created_at
-                                                ).toLocaleString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </section>
+                <ProjectActivityFeed
+                    activities={activities}
+                    loading={loadingActivities}
+                    error={activityError}
+                    onRefresh={refreshActivities}
+                    currentUserId={currentUserId}
+                />
 
                 {/* Task statistics */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
