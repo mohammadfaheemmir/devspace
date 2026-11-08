@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, type RefObject } from 'react'
 
 const FOCUSABLE = [
     'a[href]',
@@ -9,34 +9,36 @@ const FOCUSABLE = [
     '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
+const FORM_FIELD = 'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])'
+
 // Keyboard focus handling for a modal dialog:
 // - on open, focus moves into the dialog (first form field, else the first
 //   focusable element);
 // - Tab / Shift+Tab stay inside the dialog;
 // - on close, focus returns to whatever was focused before (usually the
 //   button that opened it).
-export function useDialogFocus(ref, isOpen) {
+export function useDialogFocus(ref: RefObject<HTMLElement | null>, isOpen: boolean): void {
     useEffect(() => {
         if (!isOpen || !ref.current) return
 
         const dialog = ref.current
         const previouslyFocused = document.activeElement
 
-        const focusables = () => [...dialog.querySelectorAll(FOCUSABLE)]
-        const firstField = dialog.querySelector('input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])')
-        ;(firstField || focusables()[0] || dialog).focus()
+        const focusables = () => [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)]
+        const firstField = dialog.querySelector<HTMLElement>(FORM_FIELD)
+        ;(firstField ?? focusables()[0] ?? dialog).focus()
 
-        function handleKeyDown(event) {
+        function handleKeyDown(event: KeyboardEvent) {
             if (event.key !== 'Tab') return
 
             const items = focusables()
-            if (items.length === 0) {
+            const first = items[0]
+            const last = items[items.length - 1]
+
+            if (!first || !last) {
                 event.preventDefault()
                 return
             }
-
-            const first = items[0]
-            const last = items[items.length - 1]
 
             if (event.shiftKey && document.activeElement === first) {
                 event.preventDefault()

@@ -1,23 +1,47 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { getErrorMessage } from '../lib/errors'
+import type { Tables } from '../types/database'
 import {
     createTaskComment,
     deleteTaskComment,
     getTaskComments,
     updateTaskComment,
+    type TaskComment,
 } from '../lib/commentService'
+
+type CommentsByTask = Record<string, TaskComment[]>
+
+// What the hook returns; components receive it as a `comments` prop.
+export type TaskCommentsApi = {
+    expandedTaskId: string | null
+    commentsByTask: CommentsByTask
+    drafts: Record<string, string>
+    loadingTaskId: string | null
+    sendingTaskId: string | null
+    deletingCommentId: string | null
+    savingCommentId: string | null
+    hasLoaded: (taskId: string) => boolean
+    toggle: (taskId: string) => Promise<void>
+    setDraft: (taskId: string, value: string) => void
+    submit: (taskId: string) => Promise<void>
+    edit: (taskId: string, commentId: string, content: string) => Promise<boolean>
+    remove: (taskId: string, commentId: string) => Promise<void>
+    forgetTask: (taskId: string) => void
+}
 
 // Comment state for every task in a project: which task is expanded,
 // loaded comments, unsent drafts, and loading/sending/deleting flags.
 // Also keeps loaded comments in sync with Supabase Realtime.
-export function useTaskComments(projectId, onError) {
-    const [expandedTaskId, setExpandedTaskId] = useState(null)
-    const [commentsByTask, setCommentsByTask] = useState({})
-    const [drafts, setDrafts] = useState({})
-    const [loadingTaskId, setLoadingTaskId] = useState(null)
-    const [sendingTaskId, setSendingTaskId] = useState(null)
-    const [deletingCommentId, setDeletingCommentId] = useState(null)
-    const [savingCommentId, setSavingCommentId] = useState(null)
+export function useTaskComments(projectId: string | undefined, onError: (message: string) => void): TaskCommentsApi {
+    const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+    const [commentsByTask, setCommentsByTask] = useState<CommentsByTask>({})
+    const [drafts, setDrafts] = useState<Record<string, string>>({})
+    const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null)
+    const [sendingTaskId, setSendingTaskId] = useState<string | null>(null)
+    const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
+    const [savingCommentId, setSavingCommentId] = useState<string | null>(null)
 
     // Real-time subscription for project comments.
     useEffect(() => {
@@ -30,7 +54,7 @@ export function useTaskComments(projectId, onError) {
         // received unfiltered and matched by ID (unknown IDs are ignored).
         const projectFilter = `project_id=eq.${projectId}`
 
-        const handleCommentChange = async (payload) => {
+        const handleCommentChange = async (payload: RealtimePostgresChangesPayload<Tables<'comments'>>) => {
             if (
                 payload.eventType === 'INSERT' ||
                 payload.eventType === 'UPDATE'
@@ -60,17 +84,14 @@ export function useTaskComments(projectId, onError) {
 
                 if (!deletedCommentId) return
 
-                setCommentsByTask((previous) => {
-                    const updated = { ...previous }
-
-                    Object.keys(updated).forEach((taskId) => {
-                        updated[taskId] = updated[taskId].filter(
-                            (comment) => comment.id !== deletedCommentId
-                        )
-                    })
-
-                    return updated
-                })
+                setCommentsByTask((previous) =>
+                    Object.fromEntries(
+                        Object.entries(previous).map(([taskId, comments]) => [
+                            taskId,
+                            comments.filter((comment) => comment.id !== deletedCommentId),
+                        ])
+                    )
+                )
             }
         }
 
@@ -103,12 +124,12 @@ export function useTaskComments(projectId, onError) {
         }
     }, [projectId])
 
-    function hasLoaded(taskId) {
+    function hasLoaded(taskId: string): boolean {
         return Object.prototype.hasOwnProperty.call(commentsByTask, taskId)
     }
 
     // Open or close a task's comments section, loading comments on first open.
-    async function toggle(taskId) {
+    async function toggle(taskId: string): Promise<void> {
         if (expandedTaskId === taskId) {
             setExpandedTaskId(null)
             return
@@ -129,13 +150,13 @@ export function useTaskComments(projectId, onError) {
                 [taskId]: data,
             }))
         } catch (err) {
-            onError(err.message || 'Unable to load comments.')
+            onError(getErrorMessage(err, 'Unable to load comments.'))
         } finally {
             setLoadingTaskId(null)
         }
     }
 
-    function setDraft(taskId, value) {
+    function setDraft(taskId: string, value: string): void {
         setDrafts((previous) => ({
             ...previous,
             [taskId]: value,
@@ -143,11 +164,16 @@ export function useTaskComments(projectId, onError) {
     }
 
     // Add a comment to a task.
-    async function submit(taskId) {
+    async function submit(taskId: string): Promise<void> {
         const content = drafts[taskId]?.trim()
 
         if (!content) {
             onError('Please enter a comment.')
+            return
+        }
+
+        if (!projectId) {
+            onError('Unable to add comment: the project is not loaded.')
             return
         }
 
@@ -169,7 +195,7 @@ export function useTaskComments(projectId, onError) {
 
             setDraft(taskId, '')
         } catch (err) {
-            onError(err.message || 'Unable to add comment.')
+            onError(getErrorMessage(err, 'Unable to add comment.'))
         } finally {
             setSendingTaskId(null)
         }
@@ -177,7 +203,7 @@ export function useTaskComments(projectId, onError) {
 
     // Edit a comment's text. Returns true on success so the caller can
     // leave edit mode, or false if saving failed (the error is reported).
-    async function edit(taskId, commentId, content) {
+    async function edit(taskId: string, commentId: string, content: string): Promise<boolean> {
         if (!content?.trim()) {
             onError('Comment cannot be empty.')
             return false
@@ -200,7 +226,7 @@ export function useTaskComments(projectId, onError) {
 
             return true
         } catch (err) {
-            onError(err.message || 'Unable to update comment.')
+            onError(getErrorMessage(err, 'Unable to update comment.'))
             return false
         } finally {
             setSavingCommentId(null)
@@ -208,7 +234,7 @@ export function useTaskComments(projectId, onError) {
     }
 
     // Delete a comment.
-    async function remove(taskId, commentId) {
+    async function remove(taskId: string, commentId: string): Promise<void> {
         try {
             setDeletingCommentId(commentId)
             onError('')
@@ -222,7 +248,7 @@ export function useTaskComments(projectId, onError) {
                 ),
             }))
         } catch (err) {
-            onError(err.message || 'Unable to delete comment.')
+            onError(getErrorMessage(err, 'Unable to delete comment.'))
         } finally {
             setDeletingCommentId(null)
         }
@@ -230,7 +256,7 @@ export function useTaskComments(projectId, onError) {
 
     // Drop everything about a task that was deleted. Memoised (it only uses
     // state setters) so it can be a stable dependency of other effects.
-    const forgetTask = useCallback((taskId) => {
+    const forgetTask = useCallback((taskId: string) => {
         setCommentsByTask((previous) => {
             const updated = { ...previous }
             delete updated[taskId]

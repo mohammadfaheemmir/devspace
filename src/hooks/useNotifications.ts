@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { getErrorMessage } from '../lib/errors'
+import type { Tables } from '../types/database'
+import type { Notification } from '../types/app'
 import {
     getNotifications,
     markAllNotificationsAsRead,
@@ -8,8 +12,21 @@ import {
 
 // The signed-in user's notifications, kept live with Supabase Realtime.
 // Shared by the dashboard bell dropdown and the Notifications page.
-export function useNotifications(userId) {
-    const [notifications, setNotifications] = useState([])
+export type NotificationsApi = {
+    notifications: Notification[]
+    unreadCount: number
+    loading: boolean
+    error: string
+    markingAllRead: boolean
+    markAsRead: (notification: Notification) => Promise<boolean>
+    markAllAsRead: () => Promise<void>
+}
+
+const byNewestFirst = (a: Notification, b: Notification) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+
+export function useNotifications(userId: string | null | undefined): NotificationsApi {
+    const [notifications, setNotifications] = useState<Notification[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [markingAllRead, setMarkingAllRead] = useState(false)
@@ -26,21 +43,19 @@ export function useNotifications(userId) {
                 if (active) {
                     // Merge with anything Realtime delivered while loading.
                     setNotifications((previous) => {
-                        const notificationMap = new Map()
+                        const notificationMap = new Map<string, Notification>()
 
                         data.forEach((item) => notificationMap.set(item.id, item))
                         previous.forEach((item) => notificationMap.set(item.id, item))
 
-                        return Array.from(notificationMap.values()).sort(
-                            (a, b) => new Date(b.created_at) - new Date(a.created_at)
-                        )
+                        return Array.from(notificationMap.values()).sort(byNewestFirst)
                     })
                 }
             } catch (err) {
                 console.error('Loading notifications failed:', err)
 
                 if (active) {
-                    setError(err.message || 'Unable to load notifications.')
+                    setError(getErrorMessage(err, 'Unable to load notifications.'))
                 }
             } finally {
                 if (active) {
@@ -61,11 +76,12 @@ export function useNotifications(userId) {
                     table: 'notifications',
                     filter: `user_id=eq.${userId}`,
                 },
-                (payload) => {
+                (payload: RealtimePostgresChangesPayload<Tables<'notifications'>>) => {
                     if (!active) return
 
                     if (payload.eventType === 'INSERT') {
-                        const newNotification = payload.new
+                        // The CHECK constraint on `type` guarantees a known type.
+                        const newNotification = payload.new as Notification
 
                         setNotifications((previous) =>
                             previous.some((item) => item.id === newNotification.id)
@@ -75,7 +91,7 @@ export function useNotifications(userId) {
                     }
 
                     if (payload.eventType === 'UPDATE') {
-                        const updatedNotification = payload.new
+                        const updatedNotification = payload.new as Notification
 
                         setNotifications((previous) =>
                             previous.map((item) =>
@@ -110,7 +126,7 @@ export function useNotifications(userId) {
     const unreadCount = notifications.filter((item) => !item.is_read).length
 
     // Mark one notification as read. Returns true on success.
-    async function markAsRead(notification) {
+    async function markAsRead(notification: Notification): Promise<boolean> {
         if (notification.is_read) return true
 
         setError('')
@@ -127,13 +143,13 @@ export function useNotifications(userId) {
             return true
         } catch (err) {
             console.error('Mark notification as read failed:', err)
-            setError(err.message || 'Unable to update notification.')
+            setError(getErrorMessage(err, 'Unable to update notification.'))
             return false
         }
     }
 
     // Mark every notification as read.
-    async function markAllAsRead() {
+    async function markAllAsRead(): Promise<void> {
         setError('')
         setMarkingAllRead(true)
 
@@ -145,7 +161,7 @@ export function useNotifications(userId) {
             )
         } catch (err) {
             console.error('Mark all notifications failed:', err)
-            setError(err.message || 'Unable to mark notifications as read.')
+            setError(getErrorMessage(err, 'Unable to mark notifications as read.'))
         } finally {
             setMarkingAllRead(false)
         }
