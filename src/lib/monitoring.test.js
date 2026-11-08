@@ -45,9 +45,19 @@ describe('monitoring with a DSN', () => {
 
         expect(sentry.init).toHaveBeenCalledWith(expect.objectContaining({
             dsn: DSN,
-            sendDefaultPii: false,
             tracesSampleRate: 0,
+            dataCollection: {
+                userInfo: false,
+                cookies: false,
+                httpHeaders: false,
+                httpBodies: [],
+                urlQueryParams: false,
+                databaseQueryData: false,
+                stackFrameVariables: false,
+            },
         }))
+        // The old option name is ignored by Sentry 11 and must not be relied on.
+        expect(sentry.init.mock.calls[0][0]).not.toHaveProperty('sendDefaultPii')
     })
 
     it('reports errors and tags the user by ID only', async () => {

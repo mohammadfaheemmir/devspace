@@ -10,13 +10,15 @@
 
 const dsn = import.meta.env.VITE_SENTRY_DSN
 
-let sentryPromise = null
+type SentryClient = typeof import('./sentryClient')
 
-export function isMonitoringEnabled() {
+let sentryPromise: Promise<SentryClient | null> | null = null
+
+export function isMonitoringEnabled(): boolean {
     return Boolean(dsn)
 }
 
-export function initMonitoring() {
+export function initMonitoring(): void {
     if (!dsn || sentryPromise) return
 
     sentryPromise = import('./sentryClient')
@@ -24,7 +26,18 @@ export function initMonitoring() {
             Sentry.init({
                 dsn,
                 environment: import.meta.env.MODE,
-                sendDefaultPii: false,
+                // Sentry 11 replaced `sendDefaultPii` with `dataCollection`, whose
+                // defaults collect user info, cookies, headers, bodies and query
+                // params. Turn all of it off; only the user ID set below is sent.
+                dataCollection: {
+                    userInfo: false, // includes inferring the IP address
+                    cookies: false,
+                    httpHeaders: false,
+                    httpBodies: [],
+                    urlQueryParams: false,
+                    databaseQueryData: false,
+                    stackFrameVariables: false,
+                },
                 // Errors only; no performance tracing (keeps within the free plan).
                 tracesSampleRate: 0,
             })
@@ -38,7 +51,7 @@ export function initMonitoring() {
 }
 
 // Report an error that the app caught itself (e.g. in the error boundary).
-export function reportError(error, context = {}) {
+export function reportError(error: unknown, context: Record<string, unknown> = {}): void {
     if (!sentryPromise) return
 
     sentryPromise.then((Sentry) => {
@@ -47,7 +60,7 @@ export function reportError(error, context = {}) {
 }
 
 // Attach the signed-in user's ID (never their email) to future reports.
-export function setMonitoringUser(userId) {
+export function setMonitoringUser(userId: string | null): void {
     if (!sentryPromise) return
 
     sentryPromise.then((Sentry) => {
