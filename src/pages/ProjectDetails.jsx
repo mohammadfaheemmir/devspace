@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 
 import { supabase } from '../lib/supabase'
+import { getCurrentUser } from '../lib/auth'
 
 import {
     getTasks,
@@ -338,13 +339,7 @@ function ProjectDetails() {
                 setError('')
                 setActivityError('')
 
-                const {
-                    data: { user },
-                    error: userError,
-                } = await supabase.auth.getUser()
-
-                if (userError) throw userError
-                if (!user) throw new Error('Please log in to continue.')
+                const user = await getCurrentUser()
 
                 const { data: projectData, error: projectError } =
                     await supabase

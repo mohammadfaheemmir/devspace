@@ -1,23 +1,5 @@
-
 import { supabase } from './supabase'
-
-// Get authenticated user
-async function getCurrentUser() {
-    const {
-        data: { user },
-        error,
-    } = await supabase.auth.getUser()
-
-    if (error) {
-        throw new Error(`Authentication error: ${error.message}`)
-    }
-
-    if (!user) {
-        throw new Error('Please log in to continue.')
-    }
-
-    return user
-}
+import { getCurrentUser } from './auth'
 
 // Fetch project tasks
 export async function getTasks(projectId) {

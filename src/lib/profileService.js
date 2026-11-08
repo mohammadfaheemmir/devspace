@@ -1,18 +1,5 @@
-
 import { supabase } from './supabase'
-
-// Get the currently logged-in user
-async function getCurrentUser() {
-    const {
-        data: { user },
-        error,
-    } = await supabase.auth.getUser()
-
-    if (error) throw new Error(error.message)
-    if (!user) throw new Error('Please log in to continue.')
-
-    return user
-}
+import { getCurrentUser } from './auth'
 
 // Work out the storage path of an avatar from its public URL.
 // Returns null if the URL is not a file in this user's avatar folder.

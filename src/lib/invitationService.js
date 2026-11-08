@@ -1,23 +1,5 @@
-
 import { supabase } from './supabase'
-
-// Get the currently logged-in user
-async function getCurrentUser() {
-    const {
-        data: { user },
-        error,
-    } = await supabase.auth.getUser()
-
-    if (error) {
-        throw new Error(`Authentication error: ${error.message}`)
-    }
-
-    if (!user) {
-        throw new Error('Please log in to continue.')
-    }
-
-    return user
-}
+import { getCurrentUser } from './auth'
 
 // Create an invitation for an email address
 export async function createProjectInvitation(projectId, email) {
