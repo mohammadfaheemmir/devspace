@@ -86,6 +86,43 @@ export async function createTaskComment(taskId, projectId, content) {
     }
 }
 
+// Edit the text of a comment. Only the content changes; the author,
+// task and project stay the same.
+export async function updateTaskComment(commentId, content) {
+    await getCurrentUser()
+
+    if (!commentId) {
+        throw new Error('Comment ID is required.')
+    }
+
+    const trimmedContent = content?.trim()
+
+    if (!trimmedContent) {
+        throw new Error('Comment cannot be empty.')
+    }
+
+    const { data, error } = await supabase
+        .from('comments')
+        .update({ content: trimmedContent })
+        .eq('id', commentId)
+        .select('id, content')
+        .maybeSingle()
+
+    if (error) {
+        console.error('Update comment error:', error)
+        throw new Error(error.message)
+    }
+
+    // Row Level Security returns no row when the user may not edit it.
+    if (!data) {
+        throw new Error(
+            'Comment was not updated. It may have been deleted, or you may not have permission to edit it.'
+        )
+    }
+
+    return data
+}
+
 // Delete a comment
 export async function deleteTaskComment(commentId) {
     await getCurrentUser()
@@ -94,14 +131,23 @@ export async function deleteTaskComment(commentId) {
         throw new Error('Comment ID is required.')
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('comments')
         .delete()
         .eq('id', commentId)
+        .select('id')
 
     if (error) {
         console.error('Delete comment error:', error)
         throw new Error(error.message)
+    }
+
+    // Without this check, a delete blocked by Row Level Security would look
+    // successful and the comment would reappear on the next refresh.
+    if (!data || data.length === 0) {
+        throw new Error(
+            'Comment was not deleted. It may already be gone, or you may not have permission to delete it.'
+        )
     }
 
     return true

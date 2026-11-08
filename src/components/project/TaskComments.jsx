@@ -1,4 +1,5 @@
-import { MessageCircle, Send, Trash2, UserRound } from 'lucide-react'
+import { useState } from 'react'
+import { MessageCircle, Pencil, Send, Trash2, UserRound } from 'lucide-react'
 
 // Toggleable comment thread for one task, driven by useTaskComments().
 function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }) {
@@ -7,9 +8,41 @@ function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }) {
     const draft = comments.drafts[taskId] || ''
     const isSending = comments.sendingTaskId === taskId
 
+    // Which comment is being edited, and its unsaved text.
+    const [editingCommentId, setEditingCommentId] = useState(null)
+    const [editDraft, setEditDraft] = useState('')
+
     function handleSubmit(event) {
         event.preventDefault()
         comments.submit(taskId)
+    }
+
+    function startEditing(comment) {
+        setEditingCommentId(comment.id)
+        setEditDraft(comment.content)
+    }
+
+    function cancelEditing() {
+        setEditingCommentId(null)
+        setEditDraft('')
+    }
+
+    async function saveEdit(commentId) {
+        const saved = await comments.edit(taskId, commentId, editDraft)
+        if (saved) cancelEditing()
+    }
+
+    // Escape cancels editing; Ctrl/Cmd + Enter saves.
+    function handleEditKeyDown(event, commentId) {
+        if (event.key === 'Escape') {
+            event.stopPropagation()
+            cancelEditing()
+        }
+
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault()
+            saveEdit(commentId)
+        }
     }
 
     return (
@@ -63,20 +96,73 @@ function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }) {
                                                     </span>
                                                 </div>
 
-                                                <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap break-words">
-                                                    {comment.content}
-                                                </p>
+                                                {editingCommentId === comment.id ? (
+                                                    <div className="mt-2 space-y-2">
+                                                        <textarea
+                                                            value={editDraft}
+                                                            onChange={(event) => setEditDraft(event.target.value)}
+                                                            onKeyDown={(event) => handleEditKeyDown(event, comment.id)}
+                                                            aria-label="Edit comment"
+                                                            rows={3}
+                                                            maxLength={2000}
+                                                            autoFocus
+                                                            className="w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => saveEdit(comment.id)}
+                                                                disabled={
+                                                                    comments.savingCommentId === comment.id ||
+                                                                    !editDraft.trim() ||
+                                                                    editDraft.trim() === comment.content
+                                                                }
+                                                                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            >
+                                                                {comments.savingCommentId === comment.id ? 'Saving...' : 'Save'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={cancelEditing}
+                                                                disabled={comments.savingCommentId === comment.id}
+                                                                className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap break-words">
+                                                        {comment.content}
+                                                    </p>
+                                                )}
 
-                                                {(comment.author_id === currentUserId || isProjectAdmin) && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => comments.remove(taskId, comment.id)}
-                                                        disabled={comments.deletingCommentId === comment.id}
-                                                        className="mt-3 flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
-                                                    >
-                                                        <Trash2 size={13} />
-                                                        {comments.deletingCommentId === comment.id ? 'Deleting...' : 'Delete'}
-                                                    </button>
+                                                {editingCommentId !== comment.id && (
+                                                    <div className="mt-3 flex items-center gap-4">
+                                                        {/* Only the author edits; admins may also delete. */}
+                                                        {comment.author_id === currentUserId && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => startEditing(comment)}
+                                                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"
+                                                            >
+                                                                <Pencil size={13} />
+                                                                Edit
+                                                            </button>
+                                                        )}
+
+                                                        {(comment.author_id === currentUserId || isProjectAdmin) && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => comments.remove(taskId, comment.id)}
+                                                                disabled={comments.deletingCommentId === comment.id}
+                                                                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                                {comments.deletingCommentId === comment.id ? 'Deleting...' : 'Delete'}
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>

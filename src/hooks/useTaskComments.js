@@ -4,6 +4,7 @@ import {
     createTaskComment,
     deleteTaskComment,
     getTaskComments,
+    updateTaskComment,
 } from '../lib/commentService'
 
 // Comment state for every task in a project: which task is expanded,
@@ -16,6 +17,7 @@ export function useTaskComments(projectId, onError) {
     const [loadingTaskId, setLoadingTaskId] = useState(null)
     const [sendingTaskId, setSendingTaskId] = useState(null)
     const [deletingCommentId, setDeletingCommentId] = useState(null)
+    const [savingCommentId, setSavingCommentId] = useState(null)
 
     // Real-time subscription for project comments.
     useEffect(() => {
@@ -173,6 +175,38 @@ export function useTaskComments(projectId, onError) {
         }
     }
 
+    // Edit a comment's text. Returns true on success so the caller can
+    // leave edit mode, or false if saving failed (the error is reported).
+    async function edit(taskId, commentId, content) {
+        if (!content?.trim()) {
+            onError('Comment cannot be empty.')
+            return false
+        }
+
+        try {
+            setSavingCommentId(commentId)
+            onError('')
+
+            const updated = await updateTaskComment(commentId, content)
+
+            setCommentsByTask((previous) => ({
+                ...previous,
+                [taskId]: (previous[taskId] || []).map((comment) =>
+                    comment.id === commentId
+                        ? { ...comment, content: updated.content }
+                        : comment
+                ),
+            }))
+
+            return true
+        } catch (err) {
+            onError(err.message || 'Unable to update comment.')
+            return false
+        } finally {
+            setSavingCommentId(null)
+        }
+    }
+
     // Delete a comment.
     async function remove(taskId, commentId) {
         try {
@@ -213,10 +247,12 @@ export function useTaskComments(projectId, onError) {
         loadingTaskId,
         sendingTaskId,
         deletingCommentId,
+        savingCommentId,
         hasLoaded,
         toggle,
         setDraft,
         submit,
+        edit,
         remove,
         forgetTask,
     }
