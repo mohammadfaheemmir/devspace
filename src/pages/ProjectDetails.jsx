@@ -9,9 +9,7 @@ import {
     CheckCircle2,
     Clock3,
     Circle,
-    Users,
     UserRound,
-    Mail,
     Send,
     Trash2,
     MessageCircle,
@@ -29,19 +27,8 @@ import {
     updateTaskAssignee,
 } from '../lib/taskService'
 
-import {
-    getProjectMembers,
-    transferProjectOwnership,
-    updateProjectMemberRole,
-    removeProjectMember,
-    leaveProject,
-} from '../lib/projectMemberService'
-
-import {
-    createProjectInvitation,
-    getProjectInvitations,
-    cancelProjectInvitation,
-} from '../lib/invitationService'
+import { getProjectMembers } from '../lib/projectMemberService'
+import { getProjectInvitations } from '../lib/invitationService'
 
 import {
     getTaskComments,
@@ -50,11 +37,15 @@ import {
 } from '../lib/commentService'
 
 import { getProjectActivities } from '../lib/activityService'
-import { deleteProject, updateProject } from '../lib/projectService'
 
 import TaskKanbanBoard from '../components/project/TaskKanbanBoard'
 import TaskReminders from '../components/project/TaskReminders'
 import ProjectActivityFeed from '../components/project/ProjectActivityFeed'
+import ProjectSettingsPanel from '../components/project/ProjectSettingsPanel'
+import ProjectMembersPanel from '../components/project/ProjectMembersPanel'
+import OwnershipTransferPanel from '../components/project/OwnershipTransferPanel'
+import ProjectDangerZone from '../components/project/ProjectDangerZone'
+import InvitationsPanel from '../components/project/InvitationsPanel'
 import {
     formatDueDate,
     getLocalDateString,
@@ -88,20 +79,6 @@ function ProjectDetails() {
     const [assigneeFilter, setAssigneeFilter] = useState('all')
     const [taskSort, setTaskSort] = useState('newest')
     const [taskView, setTaskView] = useState('list')
-
-    const [invitationEmail, setInvitationEmail] = useState('')
-    const [invitationSaving, setInvitationSaving] = useState(false)
-    const [cancellingInvitationId, setCancellingInvitationId] = useState(null)
-    const [selectedNewOwnerId, setSelectedNewOwnerId] = useState('')
-    const [transferringOwnership, setTransferringOwnership] = useState(false)
-    const [updatingMemberRoleId, setUpdatingMemberRoleId] = useState(null)
-    const [removingMemberId, setRemovingMemberId] = useState(null)
-    const [leavingProject, setLeavingProject] = useState(false)
-    const [deletingProject, setDeletingProject] = useState(false)
-    const [showProjectSettings, setShowProjectSettings] = useState(false)
-    const [savingProjectSettings, setSavingProjectSettings] = useState(false)
-    const [projectSettingsName, setProjectSettingsName] = useState('')
-    const [projectSettingsDescription, setProjectSettingsDescription] = useState('')
 
     const [expandedTaskId, setExpandedTaskId] = useState(null)
     const [commentsByTask, setCommentsByTask] = useState({})
@@ -586,257 +563,6 @@ function ProjectDetails() {
         )
     }
 
-    // Create a project invitation.
-    async function handleCreateInvitation(e) {
-        e.preventDefault()
-
-        try {
-            setInvitationSaving(true)
-            setError('')
-
-            const newInvitation = await createProjectInvitation(
-                projectId,
-                invitationEmail
-            )
-
-            setInvitations((previous) => [
-                newInvitation,
-                ...previous,
-            ])
-
-            setInvitationEmail('')
-        } catch (err) {
-            setError(err.message || 'Unable to create invitation.')
-        } finally {
-            setInvitationSaving(false)
-        }
-    }
-
-    // Cancel a project invitation.
-    async function handleCancelInvitation(invitationId) {
-        try {
-            setCancellingInvitationId(invitationId)
-            setError('')
-
-            await cancelProjectInvitation(invitationId)
-
-            setInvitations((previous) =>
-                previous.filter(
-                    (invitation) => invitation.id !== invitationId
-                )
-            )
-        } catch (err) {
-            setError(err.message || 'Unable to cancel invitation.')
-        } finally {
-            setCancellingInvitationId(null)
-        }
-    }
-
-    // Transfer project ownership to an existing project member.
-    async function handleTransferOwnership() {
-        if (!isProjectOwner) {
-            setError('Only the project owner can transfer ownership.')
-            return
-        }
-
-        if (!selectedNewOwnerId) {
-            setError('Please select a new owner.')
-            return
-        }
-
-        const selectedMember = members.find(
-            (member) => member.user_id === selectedNewOwnerId
-        )
-
-        if (!selectedMember || selectedMember.role === 'owner') {
-            setError('Please select a valid project member.')
-            return
-        }
-
-        const confirmed = window.confirm(
-            `Transfer ownership to ${selectedMember.full_name}? You will become an admin.`
-        )
-
-        if (!confirmed) return
-
-        try {
-            setTransferringOwnership(true)
-            setError('')
-
-            await transferProjectOwnership(projectId, selectedNewOwnerId)
-
-            const updatedMembers = await getProjectMembers(projectId)
-            setMembers(updatedMembers)
-            setSelectedNewOwnerId('')
-        } catch (err) {
-            console.error('Ownership transfer failed:', err)
-            setError(err.message || 'Unable to transfer project ownership.')
-        } finally {
-            setTransferringOwnership(false)
-        }
-    }
-
-    // Only the project owner can promote members or demote admins.
-    async function handleUpdateMemberRole(member, nextRole) {
-        if (!isProjectOwner) {
-            setError('Only the project owner can change member roles.')
-            return
-        }
-
-        if (!member || !['admin', 'member'].includes(nextRole)) {
-            setError('Invalid member role change.')
-            return
-        }
-
-        if (member.role === 'owner' || member.role === nextRole) return
-
-        const action = nextRole === 'admin' ? 'promote' : 'demote'
-        const confirmed = window.confirm(
-            `Are you sure you want to ${action} ${member.full_name} ${nextRole === 'admin' ? 'to Admin' : 'to Member'}?`
-        )
-        if (!confirmed) return
-
-        try {
-            setUpdatingMemberRoleId(member.user_id)
-            setError('')
-            await updateProjectMemberRole(projectId, member.user_id, nextRole)
-            const updatedMembers = await getProjectMembers(projectId)
-            setMembers(updatedMembers)
-        } catch (err) {
-            console.error('Member role update failed:', err)
-            setError(err.message || 'Unable to update member role.')
-        } finally {
-            setUpdatingMemberRoleId(null)
-        }
-    }
-
-    // Remove a member according to the role permissions enforced by Supabase RLS.
-    async function handleRemoveMember(member) {
-        if (!member || member.role === 'owner' || member.user_id === currentUserId) return
-
-        const canRemove = isProjectOwner
-            ? ['admin', 'member'].includes(member.role)
-            : isProjectAdmin && member.role === 'member'
-
-        if (!canRemove) {
-            setError('You do not have permission to remove this member.')
-            return
-        }
-
-        const confirmed = window.confirm(`Remove ${member.full_name} from this project?`)
-        if (!confirmed) return
-
-        try {
-            setRemovingMemberId(member.user_id)
-            setError('')
-            await removeProjectMember(projectId, member.user_id)
-            setMembers((previous) => previous.filter((item) => item.user_id !== member.user_id))
-        } catch (err) {
-            console.error('Remove project member failed:', err)
-            setError(err.message || 'Unable to remove this member.')
-        } finally {
-            setRemovingMemberId(null)
-        }
-    }
-
-    // Open project settings with the current saved values.
-    function handleOpenProjectSettings() {
-        if (!isProjectAdmin) {
-            setError('Only the project owner or an admin can edit project settings.')
-            return
-        }
-
-        setProjectSettingsName(project?.name || '')
-        setProjectSettingsDescription(project?.description || '')
-        setError('')
-        setShowProjectSettings(true)
-    }
-
-    // Save project settings. Database RLS independently enforces owner/admin access.
-    async function handleSaveProjectSettings(event) {
-        event.preventDefault()
-
-        if (!isProjectAdmin) {
-            setError('Only the project owner or an admin can edit project settings.')
-            return
-        }
-
-        if (!projectSettingsName.trim()) {
-            setError('Project name cannot be empty.')
-            return
-        }
-
-        try {
-            setSavingProjectSettings(true)
-            setError('')
-
-            const updatedProject = await updateProject(projectId, {
-                name: projectSettingsName,
-                description: projectSettingsDescription,
-            })
-
-            setProject((previous) => ({ ...previous, ...updatedProject }))
-            setShowProjectSettings(false)
-        } catch (err) {
-            console.error('Project settings update failed:', err)
-            setError(err.message || 'Unable to update project settings.')
-        } finally {
-            setSavingProjectSettings(false)
-        }
-    }
-
-    // Only the project owner can delete the entire project.
-    async function handleDeleteProject() {
-        if (!isProjectOwner) {
-            setError('Only the project owner can delete this project.')
-            return
-        }
-
-        const projectName = project?.name || 'this project'
-        const confirmed = window.confirm(
-            `Permanently delete "${projectName}"? This will delete all tasks, members, invitations, notifications, and project activity. This action cannot be undone.`
-        )
-        if (!confirmed) return
-
-        try {
-            setDeletingProject(true)
-            setError('')
-            await deleteProject(projectId)
-            navigate('/dashboard', {
-                replace: true,
-                state: { message: `Project "${projectName}" was deleted.` },
-            })
-        } catch (err) {
-            console.error('Project deletion failed:', err)
-            setError(err.message || 'Unable to delete this project.')
-        } finally {
-            setDeletingProject(false)
-        }
-    }
-
-    // A member or admin can leave. The database policy prevents the owner from leaving.
-    async function handleLeaveProject() {
-        if (isProjectOwner) {
-            setError('Transfer project ownership before leaving this project.')
-            return
-        }
-
-        const confirmed = window.confirm('Are you sure you want to leave this project? You will lose access to its workspace.')
-        if (!confirmed) return
-
-        try {
-            setLeavingProject(true)
-            setError('')
-            await leaveProject(projectId)
-            navigate('/dashboard')
-        } catch (err) {
-            console.error('Leave project failed:', err)
-            setError(err.message || 'Unable to leave this project.')
-        } finally {
-            setLeavingProject(false)
-        }
-    }
-
     // Open or close a task's comments section.
     async function handleToggleComments(taskId) {
         if (expandedTaskId === taskId) {
@@ -1097,365 +823,49 @@ function ProjectDetails() {
                     </div>
                 )}
 
-                {/* Project settings - owners and admins can edit. */}
-                <section className="mb-8 rounded-xl border border-slate-800 bg-slate-900 p-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h2 className="text-lg font-semibold text-white">Project Settings</h2>
-                            <p className="mt-1 text-sm text-slate-400">Manage your project name and description.</p>
-                        </div>
-                        {isProjectAdmin && !showProjectSettings && (
-                            <button
-                                type="button"
-                                onClick={handleOpenProjectSettings}
-                                className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
-                            >
-                                Edit Settings
-                            </button>
-                        )}
-                    </div>
+                <ProjectSettingsPanel
+                    project={project}
+                    projectId={projectId}
+                    isProjectAdmin={isProjectAdmin}
+                    onProjectChange={setProject}
+                    onError={setError}
+                />
 
-                    {showProjectSettings && isProjectAdmin && (
-                        <form onSubmit={handleSaveProjectSettings} className="mt-5 space-y-4 border-t border-slate-800 pt-5">
-                            <div>
-                                <label htmlFor="project-settings-name" className="mb-2 block text-sm font-medium text-slate-300">Project name</label>
-                                <input
-                                    id="project-settings-name"
-                                    type="text"
-                                    value={projectSettingsName}
-                                    onChange={(event) => setProjectSettingsName(event.target.value)}
-                                    maxLength={100}
-                                    required
-                                    placeholder="Enter project name"
-                                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-indigo-500"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="project-settings-description" className="mb-2 block text-sm font-medium text-slate-300">Description</label>
-                                <textarea
-                                    id="project-settings-description"
-                                    value={projectSettingsDescription}
-                                    onChange={(event) => setProjectSettingsDescription(event.target.value)}
-                                    rows={4}
-                                    maxLength={1000}
-                                    placeholder="Describe the purpose of this project..."
-                                    className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-indigo-500"
-                                />
-                                <p className="mt-1 text-xs text-slate-500">Up to 1,000 characters.</p>
-                            </div>
-                            <div className="flex flex-wrap justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowProjectSettings(false)}
-                                    disabled={savingProjectSettings}
-                                    className="rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-slate-700 disabled:opacity-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={savingProjectSettings || !projectSettingsName.trim()}
-                                    className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {savingProjectSettings ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            </div>
-                        </form>
-                    )}
-
-                    {!isProjectAdmin && (
-                        <p className="mt-3 text-sm text-slate-500">Only project owners and admins can edit these settings.</p>
-                    )}
-                </section>
-
-                {/* Project members */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8">
-                    <div className="flex items-center gap-3 mb-4">
-                        <Users className="text-indigo-400" size={22} />
-
-                        <h2 className="text-lg font-semibold">
-                            Project Members
-                        </h2>
-
-                        <span className="text-sm text-slate-400">
-                            ({members.length})
-                        </span>
-                    </div>
-
-                    {members.length === 0 ? (
-                        <p className="text-sm text-slate-400">
-                            No project members found.
-                        </p>
-                    ) : (
-                        <div className="flex flex-wrap gap-3">
-                            {members.map((member) => (
-                                <div
-                                    key={member.user_id}
-                                    className="flex items-center gap-3 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-                                >
-                                    {member.avatar_url ? (
-                                        <img
-                                            src={member.avatar_url}
-                                            alt=""
-                                            className="w-9 h-9 rounded-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-9 h-9 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center">
-                                            <UserRound size={18} />
-                                        </div>
-                                    )}
-
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-medium">
-                                            {member.full_name}
-                                        </p>
-
-                                        <p className="text-xs text-slate-400 capitalize">
-                                            {member.role}
-                                        </p>
-                                    </div>
-
-                                    {isProjectOwner && member.user_id !== currentUserId && member.role !== 'owner' && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleUpdateMemberRole(
-                                                member,
-                                                member.role === 'admin' ? 'member' : 'admin'
-                                            )}
-                                            disabled={updatingMemberRoleId === member.user_id}
-                                            className={`rounded-lg px-3 py-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${member.role === 'admin'
-                                                    ? 'border border-slate-700 text-slate-300 hover:bg-slate-800'
-                                                    : 'bg-indigo-600 text-white hover:bg-indigo-500'
-                                                }`}
-                                        >
-                                            {updatingMemberRoleId === member.user_id
-                                                ? 'Updating...'
-                                                : member.role === 'admin'
-                                                    ? 'Make Member'
-                                                    : 'Make Admin'}
-                                        </button>
-                                    )}
-
-                                    {member.user_id !== currentUserId && member.role !== 'owner' && (
-                                        (isProjectOwner || (isProjectAdmin && member.role === 'member')) && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveMember(member)}
-                                                disabled={removingMemberId === member.user_id}
-                                                className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                {removingMemberId === member.user_id ? 'Removing...' : 'Remove'}
-                                            </button>
-                                        )
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Ownership transfer - current owner only */}
-                {isProjectOwner && (
-                    <section className="mb-8 rounded-xl border border-amber-500/20 bg-slate-900 p-5">
-                        <div className="mb-4">
-                            <h3 className="font-semibold text-white">
-                                Transfer Project Ownership
-                            </h3>
-                            <p className="mt-1 text-sm text-slate-400">
-                                Choose an existing project member. After the transfer,
-                                they become the owner and your role changes to admin.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                            <select
-                                value={selectedNewOwnerId}
-                                onChange={(e) => setSelectedNewOwnerId(e.target.value)}
-                                disabled={transferringOwnership}
-                                className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500 disabled:opacity-50"
-                            >
-                                <option value="">Select a new owner</option>
-                                {members
-                                    .filter((member) => member.user_id !== currentUserId)
-                                    .map((member) => (
-                                        <option
-                                            key={member.user_id}
-                                            value={member.user_id}
-                                        >
-                                            {member.full_name} ({member.role})
-                                        </option>
-                                    ))}
-                            </select>
-
-                            <button
-                                type="button"
-                                onClick={handleTransferOwnership}
-                                disabled={transferringOwnership || !selectedNewOwnerId}
-                                className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {transferringOwnership ? 'Transferring...' : 'Transfer Ownership'}
-                            </button>
-                        </div>
-
-                        <p className="mt-3 text-xs text-amber-400">
-                            This action changes your permissions immediately.
-                        </p>
-                    </section>
-                )}
-
-                {/* Leave project - available to admins and members, not the owner. */}
-                {!isProjectOwner && (
-                    <div className="mb-8 flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900 p-5 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="font-semibold text-white">Leave Project</h3>
-                            <p className="mt-1 text-sm text-slate-400">Leave this workspace and lose access to its tasks and project activity.</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleLeaveProject}
-                            disabled={leavingProject}
-                            className="rounded-xl border border-red-500/40 px-4 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {leavingProject ? 'Leaving...' : 'Leave Project'}
-                        </button>
-                    </div>
-                )}
+                <ProjectMembersPanel
+                    projectId={projectId}
+                    members={members}
+                    currentUserId={currentUserId}
+                    isProjectOwner={isProjectOwner}
+                    isProjectAdmin={isProjectAdmin}
+                    onMembersChange={setMembers}
+                    onError={setError}
+                />
 
                 {isProjectOwner && (
-                    <p className="mb-8 text-sm text-slate-400">To leave this project, transfer ownership first.</p>
+                    <OwnershipTransferPanel
+                        projectId={projectId}
+                        members={members}
+                        currentUserId={currentUserId}
+                        isProjectOwner={isProjectOwner}
+                        onMembersChange={setMembers}
+                        onError={setError}
+                    />
                 )}
 
-                {/* Delete project - current owner only. Database RLS enforces this too. */}
-                {isProjectOwner && (
-                    <section className="mb-8 flex flex-col gap-3 rounded-xl border border-red-500/30 bg-red-950/20 p-5 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="font-semibold text-red-200">Delete Project</h3>
-                            <p className="mt-1 text-sm text-slate-400">
-                                Permanently delete this project and all its related data. This cannot be undone.
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleDeleteProject}
-                            disabled={deletingProject}
-                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-500/50 bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            <Trash2 size={16} />
-                            {deletingProject ? 'Deleting...' : 'Delete Project'}
-                        </button>
-                    </section>
-                )}
+                <ProjectDangerZone
+                    project={project}
+                    projectId={projectId}
+                    isProjectOwner={isProjectOwner}
+                    onError={setError}
+                />
 
-                {/* Project invitations - admins only */}
                 {isProjectAdmin && (
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8">
-                        <div className="flex items-center gap-3 mb-5">
-                            <Mail className="text-indigo-400" size={22} />
-
-                            <h2 className="text-lg font-semibold">
-                                Invite Members
-                            </h2>
-                        </div>
-
-                        <form
-                            onSubmit={handleCreateInvitation}
-                            className="flex flex-col sm:flex-row gap-3"
-                        >
-                            <input
-                                type="email"
-                                value={invitationEmail}
-                                onChange={(e) =>
-                                    setInvitationEmail(e.target.value)
-                                }
-                                placeholder="Enter member's email address"
-                                required
-                                className="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-indigo-500"
-                            />
-
-                            <button
-                                type="submit"
-                                disabled={invitationSaving}
-                                className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-5 py-3 rounded-xl font-medium transition"
-                            >
-                                <Send size={17} />
-                                {invitationSaving
-                                    ? 'Sending...'
-                                    : 'Create Invitation'}
-                            </button>
-                        </form>
-
-                        <p className="text-xs text-slate-400 mt-3">
-                            The invited person must sign up or log in using
-                            this same email address.
-                        </p>
-
-                        <div className="border-t border-slate-800 mt-6 pt-5">
-                            <h3 className="text-sm font-semibold text-slate-300 mb-4">
-                                Invitations ({invitations.length})
-                            </h3>
-
-                            {invitations.length === 0 ? (
-                                <p className="text-sm text-slate-500">
-                                    No invitations created yet.
-                                </p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {invitations.map((invitation) => (
-                                        <div
-                                            key={invitation.id}
-                                            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-950 border border-slate-800 rounded-xl p-4"
-                                        >
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-medium break-all">
-                                                    {invitation.invited_email}
-                                                </p>
-
-                                                <p className="text-xs text-slate-400 mt-1">
-                                                    Created:{' '}
-                                                    {new Date(
-                                                        invitation.created_at
-                                                    ).toLocaleDateString()}
-                                                </p>
-
-                                                <span
-                                                    className={`inline-block mt-2 text-xs px-2.5 py-1 rounded-full capitalize ${invitation.status === 'pending'
-                                                        ? 'bg-yellow-500/10 text-yellow-400'
-                                                        : invitation.status === 'accepted'
-                                                            ? 'bg-green-500/10 text-green-400'
-                                                            : 'bg-slate-700 text-slate-300'
-                                                        }`}
-                                                >
-                                                    {invitation.status}
-                                                </span>
-                                            </div>
-
-                                            {invitation.status === 'pending' && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleCancelInvitation(
-                                                            invitation.id
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        cancellingInvitationId ===
-                                                        invitation.id
-                                                    }
-                                                    className="flex items-center justify-center gap-2 text-red-400 hover:text-red-300 disabled:opacity-50 text-sm"
-                                                >
-                                                    <Trash2 size={16} />
-                                                    {cancellingInvitationId ===
-                                                        invitation.id
-                                                        ? 'Cancelling...'
-                                                        : 'Cancel'}
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <InvitationsPanel
+                        projectId={projectId}
+                        invitations={invitations}
+                        onInvitationsChange={setInvitations}
+                        onError={setError}
+                    />
                 )}
 
                 <ProjectActivityFeed
