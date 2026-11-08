@@ -49,7 +49,7 @@ function Signup() {
                     Dev<span className="text-indigo-400">Space</span>
                 </Link>
 
-                <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
+                <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
                     <h1 className="text-3xl font-bold">Create your account</h1>
                     <p className="mt-2 text-slate-400">
                         Start managing your projects with your team.

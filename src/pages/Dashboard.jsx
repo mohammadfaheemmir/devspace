@@ -337,7 +337,7 @@ function Dashboard() {
 
             {/* Navigation */}
             <header className="border-b border-slate-800">
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+                <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6">
 
                     <h1 className="text-2xl font-bold">
                         Dev<span className="text-indigo-400">Space</span>
@@ -368,7 +368,10 @@ function Dashboard() {
 
                             {/* Notification dropdown */}
                             {notificationsOpen && (
-                                <div className="absolute right-0 top-full z-50 mt-3 w-[min(90vw,380px)] overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+                                // Phones: span the screen below the header (the bell is not at the
+                                // screen edge, so anchoring to it pushed the menu off-screen).
+                                // From sm up: drop down from the bell.
+                                <div className="fixed inset-x-4 top-24 z-50 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-3 sm:w-[380px]">
 
                                     <div className="flex items-center justify-between border-b border-slate-800 p-4">
 
@@ -519,7 +522,7 @@ function Dashboard() {
             </header>
 
             {/* Main dashboard */}
-            <main className="mx-auto max-w-7xl px-6 py-12">
+            <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
 
                 {/* Heading */}
                 <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
@@ -846,7 +849,7 @@ function Dashboard() {
                         role="dialog"
                         aria-modal="true"
                         aria-label="Create new project"
-                        className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-7"
+                        className="w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-7"
                     >
 
                         <div className="flex items-center justify-between">

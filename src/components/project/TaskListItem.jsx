@@ -28,10 +28,10 @@ function TaskListItem({
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="min-w-0">
-                    <h3 className="font-semibold">{task.title}</h3>
+                    <h3 className="font-semibold break-words">{task.title}</h3>
 
                     {task.description && (
-                        <p className="text-sm text-slate-400 mt-1">{task.description}</p>
+                        <p className="text-sm text-slate-400 mt-1 break-words">{task.description}</p>
                     )}
 
                     <span className={`inline-block mt-3 text-xs px-3 py-1 rounded-full capitalize ${getPriorityBadgeClasses(task.priority)}`}>

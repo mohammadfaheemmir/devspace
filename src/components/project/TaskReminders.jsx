@@ -110,7 +110,10 @@ function TaskReminders({ projectId, projectName, tasks, tasksLoaded }) {
             </button>
 
             {showNotifications && (
-                <div className="absolute right-0 z-50 mt-3 w-96 max-w-[calc(100vw-3rem)] overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+                // Phones: the bell is the first item in its row, so open to the right
+                // across the screen. From sm up the bell sits at the right of the
+                // header, so open to the left.
+                <div className="absolute left-0 z-50 mt-3 w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl sm:left-auto sm:right-0 sm:w-96">
                     <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
                         <div>
                             <h3 className="font-semibold text-white">Task reminders</h3>

@@ -468,7 +468,7 @@ function ProjectDetails() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white px-6 py-8">
+        <div className="min-h-screen bg-slate-950 text-white px-4 py-8 sm:px-6">
             <div className="max-w-5xl mx-auto">
 
                 {/* Back button */}
@@ -482,16 +482,16 @@ function ProjectDetails() {
 
                 {/* Project header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-sm text-indigo-400 mb-2">
                             Project workspace
                         </p>
 
-                        <h1 className="text-3xl font-bold">
+                        <h1 className="text-2xl font-bold break-words sm:text-3xl">
                             {project.name}
                         </h1>
 
-                        <p className="text-slate-400 mt-2">
+                        <p className="text-slate-400 mt-2 break-words">
                             {project.description ||
                                 'No project description provided.'}
                         </p>
