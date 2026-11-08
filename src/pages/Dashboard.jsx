@@ -254,10 +254,6 @@ function Dashboard() {
                 }
             )
             .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Notification Realtime connected.')
-                }
-
                 if (status === 'CHANNEL_ERROR') {
                     console.error('Notification Realtime connection failed.')
                 }

@@ -466,10 +466,6 @@ function ProjectDetails() {
                 }
             )
             .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Realtime activities connected.')
-                }
-
                 if (
                     status === 'CHANNEL_ERROR' ||
                     status === 'TIMED_OUT'
@@ -493,69 +489,78 @@ function ProjectDetails() {
 
         let active = true
 
+        // Inserts and updates are filtered by project on the server.
+        // Supabase cannot filter DELETE events by column, so deletes are
+        // received unfiltered and matched by ID (unknown IDs are ignored).
+        const projectFilter = `project_id=eq.${projectId}`
+
+        const handleCommentChange = async (payload) => {
+            if (
+                payload.eventType === 'INSERT' ||
+                payload.eventType === 'UPDATE'
+            ) {
+                const changedComment = payload.new
+
+                if (changedComment.project_id !== projectId) return
+
+                const taskId = changedComment.task_id
+
+                try {
+                    const updatedComments =
+                        await getTaskComments(taskId)
+
+                    if (!active) return
+
+                    setCommentsByTask((previous) => ({
+                        ...previous,
+                        [taskId]: updatedComments,
+                    }))
+                } catch (err) {
+                    console.error(
+                        'Unable to refresh realtime comments:',
+                        err
+                    )
+                }
+            }
+
+            if (payload.eventType === 'DELETE') {
+                const deletedCommentId = payload.old.id
+
+                if (!deletedCommentId) return
+
+                setCommentsByTask((previous) => {
+                    const updated = { ...previous }
+
+                    Object.keys(updated).forEach((taskId) => {
+                        updated[taskId] = updated[taskId].filter(
+                            (comment) =>
+                                comment.id !== deletedCommentId
+                        )
+                    })
+
+                    return updated
+                })
+            }
+        }
+
         const channel = supabase
             .channel(`project-comments-${projectId}-${crypto.randomUUID()}`)
             .on(
                 'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'comments',
-                },
-                async (payload) => {
-                    if (
-                        payload.eventType === 'INSERT' ||
-                        payload.eventType === 'UPDATE'
-                    ) {
-                        const changedComment = payload.new
-
-                        if (changedComment.project_id !== projectId) return
-
-                        const taskId = changedComment.task_id
-
-                        try {
-                            const updatedComments =
-                                await getTaskComments(taskId)
-
-                            if (!active) return
-
-                            setCommentsByTask((previous) => ({
-                                ...previous,
-                                [taskId]: updatedComments,
-                            }))
-                        } catch (err) {
-                            console.error(
-                                'Unable to refresh realtime comments:',
-                                err
-                            )
-                        }
-                    }
-
-                    if (payload.eventType === 'DELETE') {
-                        const deletedCommentId = payload.old.id
-
-                        if (!deletedCommentId) return
-
-                        setCommentsByTask((previous) => {
-                            const updated = { ...previous }
-
-                            Object.keys(updated).forEach((taskId) => {
-                                updated[taskId] = updated[taskId].filter(
-                                    (comment) =>
-                                        comment.id !== deletedCommentId
-                                )
-                            })
-
-                            return updated
-                        })
-                    }
-                }
+                { event: 'INSERT', schema: 'public', table: 'comments', filter: projectFilter },
+                handleCommentChange
+            )
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'comments', filter: projectFilter },
+                handleCommentChange
+            )
+            .on(
+                'postgres_changes',
+                { event: 'DELETE', schema: 'public', table: 'comments' },
+                handleCommentChange
             )
             .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Realtime comments connected.')
-                }
-
                 if (
                     status === 'CHANNEL_ERROR' ||
                     status === 'TIMED_OUT'
@@ -577,84 +582,93 @@ function ProjectDetails() {
     useEffect(() => {
         if (!projectId) return
 
+        // Inserts and updates are filtered by project on the server.
+        // Supabase cannot filter DELETE events by column, so deletes are
+        // received unfiltered and matched by ID (unknown IDs are ignored).
+        const projectFilter = `project_id=eq.${projectId}`
+
+        const handleTaskChange = (payload) => {
+            if (payload.eventType === 'INSERT') {
+                const newTask = payload.new
+
+                if (newTask.project_id !== projectId) return
+
+                setTasks((previous) => {
+                    const withoutDuplicate = previous.filter(
+                        (task) => task.id !== newTask.id
+                    )
+
+                    return [newTask, ...withoutDuplicate].sort(
+                        (a, b) =>
+                            new Date(b.created_at) -
+                            new Date(a.created_at)
+                    )
+                })
+            }
+
+            if (payload.eventType === 'UPDATE') {
+                const updatedTask = payload.new
+
+                if (updatedTask.project_id !== projectId) return
+
+                setTasks((previous) => {
+                    const taskExists = previous.some(
+                        (task) => task.id === updatedTask.id
+                    )
+
+                    if (!taskExists) {
+                        return [updatedTask, ...previous]
+                    }
+
+                    return previous.map((task) =>
+                        task.id === updatedTask.id
+                            ? { ...task, ...updatedTask }
+                            : task
+                    )
+                })
+            }
+
+            if (payload.eventType === 'DELETE') {
+                const deletedTaskId = payload.old.id
+
+                if (!deletedTaskId) return
+
+                setTasks((previous) =>
+                    previous.filter(
+                        (task) => task.id !== deletedTaskId
+                    )
+                )
+
+                setCommentsByTask((previous) => {
+                    const updated = { ...previous }
+                    delete updated[deletedTaskId]
+                    return updated
+                })
+
+                setExpandedTaskId((previous) =>
+                    previous === deletedTaskId ? null : previous
+                )
+            }
+        }
+
         const channel = supabase
             .channel(`project-tasks-${projectId}-${crypto.randomUUID()}`)
             .on(
                 'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'tasks',
-                },
-                (payload) => {
-                    if (payload.eventType === 'INSERT') {
-                        const newTask = payload.new
-
-                        if (newTask.project_id !== projectId) return
-
-                        setTasks((previous) => {
-                            const withoutDuplicate = previous.filter(
-                                (task) => task.id !== newTask.id
-                            )
-
-                            return [newTask, ...withoutDuplicate].sort(
-                                (a, b) =>
-                                    new Date(b.created_at) -
-                                    new Date(a.created_at)
-                            )
-                        })
-                    }
-
-                    if (payload.eventType === 'UPDATE') {
-                        const updatedTask = payload.new
-
-                        if (updatedTask.project_id !== projectId) return
-
-                        setTasks((previous) => {
-                            const taskExists = previous.some(
-                                (task) => task.id === updatedTask.id
-                            )
-
-                            if (!taskExists) {
-                                return [updatedTask, ...previous]
-                            }
-
-                            return previous.map((task) =>
-                                task.id === updatedTask.id
-                                    ? { ...task, ...updatedTask }
-                                    : task
-                            )
-                        })
-                    }
-
-                    if (payload.eventType === 'DELETE') {
-                        const deletedTaskId = payload.old.id
-
-                        if (!deletedTaskId) return
-
-                        setTasks((previous) =>
-                            previous.filter(
-                                (task) => task.id !== deletedTaskId
-                            )
-                        )
-
-                        setCommentsByTask((previous) => {
-                            const updated = { ...previous }
-                            delete updated[deletedTaskId]
-                            return updated
-                        })
-
-                        setExpandedTaskId((previous) =>
-                            previous === deletedTaskId ? null : previous
-                        )
-                    }
-                }
+                { event: 'INSERT', schema: 'public', table: 'tasks', filter: projectFilter },
+                handleTaskChange
+            )
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'tasks', filter: projectFilter },
+                handleTaskChange
+            )
+            .on(
+                'postgres_changes',
+                { event: 'DELETE', schema: 'public', table: 'tasks' },
+                handleTaskChange
             )
             .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Realtime tasks connected.')
-                }
-
                 if (
                     status === 'CHANNEL_ERROR' ||
                     status === 'TIMED_OUT'
