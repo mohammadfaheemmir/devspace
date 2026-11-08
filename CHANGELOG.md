@@ -3,6 +3,48 @@
 All notable changes to DevSpace. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-11-09
+
+Three new features. Labels and attachments needed database changes, each
+reviewed and approved before being applied to the live project.
+
+### Added
+
+- **Calendar view** of task due dates, next to List and Board, using the same
+  search and filters. Month grid with previous / next / Today navigation;
+  tasks coloured by status, overdue in red, busy days collapse into
+  "+N more"; on phones a list of the month's due dates. (`bef2723`)
+- **Task labels**: owners and admins create coloured labels (8 colours);
+  members add them to tasks in the task form. Labels show on list items and
+  board cards, can be used as a filter, and update live. (`3a85a60`,
+  `a2a33b8`, `0a0435c`)
+- **File attachments** on tasks (images, PDF, text and Office files up to
+  10 MB) in the Edit task dialog: upload several at once, download through
+  60-second private links, delete for the uploader or owners/admins, live
+  updates. (`f20f7f3`, `3d06d75`, `37c6e92`)
+
+### Database
+
+- `project_labels` and `task_labels` tables; composite keys keep a task's
+  labels within its own project. Members view and label tasks; owners and
+  admins manage labels. (`3a85a60`)
+- Private `task-attachments` storage bucket (no HTML or SVG) and
+  `task_attachments` table with access rules for files and records.
+  (`f20f7f3`)
+
+### Known limitations
+
+- Supabase cannot delete files when database rows cascade, so the app
+  removes a task's or project's files before deleting it. If a regular
+  member deletes a task they created, files others attached to it cannot be
+  removed (only the uploader or an admin may delete a file) and remain in
+  storage.
+
+### Testing
+
+- 151 tests (from 102), including accessibility audits of the calendar,
+  label manager and attachments section.
+
 ## 2026-11-08
 
 A full review and overhaul: bug fixes, database security hardening, new
@@ -106,6 +148,32 @@ Applied to the live Supabase database and verified.
 - GitHub Actions runs lint, tests and the build on every push and pull
   request. (`35445ec`)
 - `.env.example`, a project README and this changelog.
+
+### Error monitoring
+
+- Optional Sentry error monitoring, off unless `VITE_SENTRY_DSN` is set (the
+  SDK is then not included at all). Loaded in the background; only the
+  needed parts are bundled (31 kB instead of 150 kB gzip). (`5233515`)
+- A "Something went wrong" screen with a reload button replaces the blank
+  page when the app crashes. (`5233515`)
+- **Privacy fix:** Sentry 11 silently ignores the old `sendDefaultPii`
+  option, and its new `dataCollection` defaults collect user info (including
+  IP), cookies, headers, bodies and query parameters. All of these are now
+  switched off; only the user's ID is sent. Found by the TypeScript
+  conversion; no data had been sent, as monitoring was not yet enabled.
+  (`7cdf8ff`)
+
+### TypeScript
+
+- The whole app was converted to TypeScript with strict checking, run in CI
+  on every push. Database types are generated from the live schema, so
+  queries are checked against the real tables. (`58ecde9`, `c813041`,
+  `d6ff3e5`, `a4704dd`, `2f6e4bb`, `a2c08d7`, `915b1e1`)
+- Issues the type checker found and fixed: dates shown as "1 Jan 1970" when
+  a nullable `created_at` was missing (project cards, comments,
+  invitations); the project page passing a possibly-missing ID to a dozen
+  calls; updates merged into data that had not loaded yet; and the Sentry
+  privacy setting above.
 
 ## 2026-11-01
 
