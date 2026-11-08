@@ -4,7 +4,7 @@ A team project-management app: projects, tasks (list and Kanban board),
 comments, members and roles, invitations, an activity feed, due-date reminders
 and live updates.
 
-**Live site:** https://developersspace.netlify.app/login
+**Live site:** https://developersspace.netlify.app/signup
 
 Built with React 19, Vite, Tailwind CSS 4 and [Supabase](https://supabase.com)
 (Postgres, Auth, Storage and Realtime).
