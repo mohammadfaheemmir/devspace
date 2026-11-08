@@ -1,0 +1,3 @@
+# Serve the single-page app for every route (e.g. /login, /dashboard),
+# so direct visits and page refreshes do not return a 404.
+/*    /index.html    200
