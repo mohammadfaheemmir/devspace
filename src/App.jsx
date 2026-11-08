@@ -10,6 +10,7 @@ const Signup = lazy(() => import('./pages/Signup'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const ProjectDetails = lazy(() => import('./pages/ProjectDetails'))
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'))
+const Notifications = lazy(() => import('./pages/Notifications'))
 
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicOnlyRoute from './components/PublicOnlyRoute'
@@ -50,6 +51,8 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
 
             <Route path="/profile" element={<ProfileSettings />} />
+
+            <Route path="/notifications" element={<Notifications />} />
 
             <Route
               path="/projects/:projectId"

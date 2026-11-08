@@ -1,6 +1,5 @@
 
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '../lib/supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import {
@@ -33,23 +32,13 @@ import {
     declineProjectInvitation,
 } from '../lib/invitationService'
 
-import {
-    getNotifications,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-} from '../lib/notificationService'
+import { useNotifications } from '../hooks/useNotifications'
+import NotificationItem from '../components/notifications/NotificationItem'
+import { getNotificationLink } from '../components/notifications/notificationUtils'
 
 import { getMyProfile } from '../lib/profileService'
 import { useDismiss } from '../hooks/useDismiss'
 import { useToast } from '../context/useToast'
-
-
-function formatNotificationDate(date) {
-    return new Date(date).toLocaleString([], {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    })
-}
 
 
 function Dashboard() {
@@ -86,12 +75,20 @@ function Dashboard() {
     const [projectName, setProjectName] = useState('')
     const [description, setDescription] = useState('')
 
-    // Notification state
-    const [notifications, setNotifications] = useState([])
+    // Notifications (shared with the Notifications page) and dropdown state
     const [notificationsOpen, setNotificationsOpen] = useState(false)
-    const [notificationLoading, setNotificationLoading] = useState(true)
-    const [notificationError, setNotificationError] = useState('')
-    const [markingAllRead, setMarkingAllRead] = useState(false)
+    const {
+        notifications,
+        unreadCount,
+        loading: notificationLoading,
+        error: notificationError,
+        markingAllRead,
+        markAsRead,
+        markAllAsRead: handleMarkAllAsRead,
+    } = useNotifications(user?.id)
+
+    // The dropdown shows only the most recent few; the rest are on /notifications.
+    const recentNotifications = notifications.slice(0, 8)
 
     // Close the notification dropdown and the create-project modal on
     // Escape or a click outside them.
@@ -103,10 +100,6 @@ function Dashboard() {
         setCreating(false)
         setError('')
     })
-
-    const unreadCount = notifications.filter(
-        (notification) => !notification.is_read
-    ).length
 
     // Profile display information. Prefer the profiles table, which is
     // what Profile Settings updates; fall back to signup metadata.
@@ -196,116 +189,6 @@ function Dashboard() {
 
         loadInvitations()
     }, [])
-
-    // Fetch notifications and listen for Realtime changes
-    useEffect(() => {
-        if (!user?.id) return
-
-        let active = true
-
-        async function loadNotifications() {
-            try {
-                const data = await getNotifications()
-
-                if (active) {
-                    setNotifications((previous) => {
-                        const notificationMap = new Map()
-
-                        data.forEach((item) => {
-                            notificationMap.set(item.id, item)
-                        })
-
-                        previous.forEach((item) => {
-                            notificationMap.set(item.id, item)
-                        })
-
-                        return Array.from(notificationMap.values()).sort(
-                            (a, b) =>
-                                new Date(b.created_at) -
-                                new Date(a.created_at)
-                        )
-                    })
-                }
-            } catch (err) {
-                console.error('Loading notifications failed:', err)
-
-                if (active) {
-                    setNotificationError(
-                        err.message || 'Unable to load notifications.'
-                    )
-                }
-            } finally {
-                if (active) {
-                    setNotificationLoading(false)
-                }
-            }
-        }
-
-        // A unique channel name per mount avoids reusing a channel that is
-        // still closing from a previous mount (e.g. React StrictMode in dev).
-        const channel = supabase
-            .channel(`user-notifications-${user.id}-${crypto.randomUUID()}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'notifications',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                (payload) => {
-                    if (!active) return
-
-                    if (payload.eventType === 'INSERT') {
-                        const newNotification = payload.new
-
-                        setNotifications((previous) => {
-                            if (
-                                previous.some(
-                                    (item) => item.id === newNotification.id
-                                )
-                            ) {
-                                return previous
-                            }
-
-                            return [newNotification, ...previous]
-                        })
-                    }
-
-                    if (payload.eventType === 'UPDATE') {
-                        const updatedNotification = payload.new
-
-                        setNotifications((previous) =>
-                            previous.map((item) =>
-                                item.id === updatedNotification.id
-                                    ? { ...item, ...updatedNotification }
-                                    : item
-                            )
-                        )
-                    }
-
-                    if (payload.eventType === 'DELETE') {
-                        setNotifications((previous) =>
-                            previous.filter(
-                                (item) => item.id !== payload.old.id
-                            )
-                        )
-                    }
-                }
-            )
-            .subscribe((status) => {
-                if (status === 'CHANNEL_ERROR') {
-                    console.error('Notification Realtime connection failed.')
-                }
-            })
-
-        loadNotifications()
-
-        return () => {
-            active = false
-            supabase.removeChannel(channel)
-        }
-    }, [user?.id])
 
     // Create a new project
     const handleCreateProject = async (e) => {
@@ -406,58 +289,15 @@ function Dashboard() {
         }
     }
 
-    // Mark one notification as read
+    // Mark a notification as read and open what it refers to
     const handleNotificationClick = async (notification) => {
-        setNotificationError('')
+        const updated = await markAsRead(notification)
+        if (!updated) return
 
-        try {
-            if (!notification.is_read) {
-                await markNotificationAsRead(notification.id)
+        setNotificationsOpen(false)
 
-                setNotifications((previous) =>
-                    previous.map((item) =>
-                        item.id === notification.id
-                            ? { ...item, is_read: true }
-                            : item
-                    )
-                )
-            }
-
-            setNotificationsOpen(false)
-
-            if (notification.project_id) {
-                navigate(`/projects/${notification.project_id}`)
-            }
-        } catch (err) {
-            console.error('Mark notification as read failed:', err)
-            setNotificationError(
-                err.message || 'Unable to update notification.'
-            )
-        }
-    }
-
-    // Mark all notifications as read
-    const handleMarkAllAsRead = async () => {
-        setNotificationError('')
-        setMarkingAllRead(true)
-
-        try {
-            await markAllNotificationsAsRead()
-
-            setNotifications((previous) =>
-                previous.map((item) => ({
-                    ...item,
-                    is_read: true,
-                }))
-            )
-        } catch (err) {
-            console.error('Mark all notifications failed:', err)
-            setNotificationError(
-                err.message || 'Unable to mark notifications as read.'
-            )
-        } finally {
-            setMarkingAllRead(false)
-        }
+        const link = getNotificationLink(notification)
+        if (link) navigate(link)
     }
 
     // Logout current user
@@ -608,58 +448,29 @@ function Dashboard() {
                                         ) : (
 
                                             <div>
-                                                {notifications.map((notification) => (
-                                                    <button
-                                                        type="button"
+                                                {recentNotifications.map((notification) => (
+                                                    <NotificationItem
                                                         key={notification.id}
-                                                        onClick={() =>
-                                                            handleNotificationClick(notification)
-                                                        }
-                                                        className={`w-full border-b border-slate-800 p-4 text-left transition hover:bg-slate-800/70 ${!notification.is_read
-                                                                ? 'bg-indigo-500/5'
-                                                                : ''
-                                                            }`}
-                                                    >
-
-                                                        <div className="flex items-start gap-3">
-
-                                                            <div className="mt-1 rounded-lg bg-indigo-500/10 p-2 text-indigo-400">
-                                                                <Bell size={17} />
-                                                            </div>
-
-                                                            <div className="min-w-0 flex-1">
-
-                                                                <div className="flex items-start justify-between gap-2">
-
-                                                                    <p className="text-sm font-semibold text-slate-200">
-                                                                        {notification.title}
-                                                                    </p>
-
-                                                                    {!notification.is_read && (
-                                                                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-indigo-400" />
-                                                                    )}
-
-                                                                </div>
-
-                                                                <p className="mt-1 text-xs leading-5 text-slate-400">
-                                                                    {notification.message}
-                                                                </p>
-
-                                                                <p className="mt-2 text-xs text-slate-500">
-                                                                    {formatNotificationDate(notification.created_at)}
-                                                                </p>
-
-                                                            </div>
-
-                                                        </div>
-
-                                                    </button>
+                                                        notification={notification}
+                                                        onClick={handleNotificationClick}
+                                                    />
                                                 ))}
                                             </div>
 
                                         )}
 
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setNotificationsOpen(false)
+                                            navigate('/notifications')
+                                        }}
+                                        className="w-full border-t border-slate-800 p-3 text-center text-sm font-medium text-indigo-400 transition hover:bg-slate-800/70 hover:text-indigo-300"
+                                    >
+                                        View all notifications
+                                    </button>
 
                                 </div>
                             )}
