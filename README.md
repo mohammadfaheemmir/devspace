@@ -52,13 +52,14 @@ roles are `owner`, `admin` and `member`, stored in `project_members`; helper
 functions `is_project_member`, `is_project_admin` and `is_project_owner` are
 used by the policies.
 
-**Using the Supabase CLI with the existing project:** the live database was
-created before these files existed, so tell the CLI the baseline is already
-applied before pushing anything new:
+**Using the Supabase CLI with the existing project:** both migrations are
+already applied to the live database (the baseline describes how it was built;
+the hardening was applied on 2026-11-08), but the CLI's migration history does
+not know that yet. Mark them as applied before pushing anything new:
 
 ```bash
 npx supabase link --project-ref <your-project-ref>
-npx supabase migration repair --status applied 20261108000000
+npx supabase migration repair --status applied 20261108000000 20261108000100
 npx supabase db push    # applies any newer migrations
 ```
 

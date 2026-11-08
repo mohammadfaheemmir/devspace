@@ -7,7 +7,7 @@
 --
 -- The live database already contains all of this. Before using
 -- `supabase db push` against it, mark this migration as applied:
---   npx supabase migration repair --status applied 20261108000000
+--   npx supabase migration repair --status applied 20261108000000 20261108000100
 
 -- ======================================================================
 -- Private schema (not exposed through the API)

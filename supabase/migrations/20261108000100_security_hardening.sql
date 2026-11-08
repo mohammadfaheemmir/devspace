@@ -1,9 +1,9 @@
 -- DevSpace security hardening
 --
 -- Fixes found while reviewing the baseline schema (20261108000000).
--- NOT YET APPLIED to the live project. Apply with:
---   npx supabase db query --remote=hoffodsvcnyjnqrimtja -f supabase/migrations/20261108000100_security_hardening.sql
--- or `npx supabase db push` once the baseline is marked as applied.
+-- Applied to the live project "devspace" on 2026-11-08 (as one transaction,
+-- outside the CLI's migration history). Before `supabase db push`, run:
+--   npx supabase migration repair --status applied 20261108000100
 
 
 -- ----------------------------------------------------------------------
