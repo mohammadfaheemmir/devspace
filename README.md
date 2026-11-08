@@ -91,20 +91,21 @@ The complete database setup lives in `supabase/migrations/`:
 | `20261108000000_baseline_schema.sql` | Tables, constraints, indexes, functions, triggers, Row Level Security policies, the `avatars` storage bucket and Realtime publication, reconstructed from the live project |
 | `20261108000100_security_hardening.sql` | Fixes from the schema review: removes direct member inserts, makes a task's creator/project read-only, keeps `projects.owner_id` in sync on ownership transfer, and drops a debug function |
 | `20261108000200_decline_invitation.sql` | `decline_project_invitation()` so invited users can decline |
+| `20261109000000_task_labels.sql` | `project_labels` and `task_labels` tables with access rules |
 
 Access control is enforced in the database with Row Level Security. Project
 roles are `owner`, `admin` and `member`, stored in `project_members`; helper
 functions `is_project_member`, `is_project_admin` and `is_project_owner` are
 used by the policies.
 
-**Using the Supabase CLI with the existing project:** all three migrations are
+**Using the Supabase CLI with the existing project:** all four migrations are
 already applied to the live database (the baseline describes how it was built;
 the others were applied on 2026-11-08), but the CLI's migration history does
 not know that yet. Mark them as applied before pushing anything new:
 
 ```bash
 npx supabase link --project-ref <your-project-ref>
-npx supabase migration repair --status applied 20261108000000 20261108000100 20261108000200
+npx supabase migration repair --status applied 20261108000000 20261108000100 20261108000200 20261109000000
 npx supabase db push    # applies any newer migrations
 ```
 
