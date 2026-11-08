@@ -6,6 +6,20 @@ import {
     getPriorityBadgeClasses,
     isTaskOverdue,
 } from './taskUtils'
+import type { ProjectMember, Task } from '../../types/app'
+import type { TaskCommentsApi } from '../../hooks/useTaskComments'
+
+type TaskListItemProps = {
+    task: Task
+    members: ProjectMember[]
+    isUpdating: boolean
+    onStatusChange: (taskId: string, status: string) => void
+    onAssigneeChange: (taskId: string, assigneeId: string) => void
+    comments: TaskCommentsApi
+    currentUserId: string | null
+    isProjectAdmin: boolean
+    onEdit: () => void
+}
 
 const selectClass =
     'bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 disabled:opacity-50'
@@ -21,7 +35,7 @@ function TaskListItem({
     currentUserId,
     isProjectAdmin,
     onEdit,
-}) {
+}: TaskListItemProps) {
     const overdue = isTaskOverdue(task)
 
     return (

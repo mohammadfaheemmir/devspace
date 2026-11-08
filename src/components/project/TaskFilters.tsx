@@ -1,12 +1,26 @@
+import type { ChangeEvent } from 'react'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
+import type { ProjectMember } from '../../types/app'
+import type { TaskFilters as TaskFilterValues } from './taskUtils'
+
+type TaskFiltersProps = {
+    filters: TaskFilterValues
+    onChange: (filters: TaskFilterValues) => void
+    onReset: () => void
+    members: ProjectMember[]
+    shownCount: number
+    totalCount: number
+}
 
 const selectClass =
     'w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-indigo-500'
 
 // Search box plus status / priority / assignee filters and sort order.
-function TaskFilters({ filters, onChange, onReset, members, shownCount, totalCount }) {
-    function update(field) {
-        return (event) => onChange({ ...filters, [field]: event.target.value })
+function TaskFilters({ filters, onChange, onReset, members, shownCount, totalCount }: TaskFiltersProps) {
+    function update(field: keyof TaskFilterValues) {
+        // Each control only offers valid values for its field (see the <option>s below).
+        return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+            onChange({ ...filters, [field]: event.target.value } as TaskFilterValues)
     }
 
     return (

@@ -1,12 +1,35 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Trash2, X } from 'lucide-react'
 import { useToast } from '../../context/useToast'
 import { createTask, deleteTask, updateTask } from '../../lib/taskService'
 import { getLocalDateString } from './taskUtils'
 import { useDismiss } from '../../hooks/useDismiss'
 import { useDialogFocus } from '../../hooks/useDialogFocus'
+import { getErrorMessage } from '../../lib/errors'
+import type { TaskInput } from '../../lib/taskService'
+import type { ProjectMember, Task } from '../../types/app'
 
-const EMPTY_TASK_FORM = {
+type TaskForm = {
+    title: string
+    description: string
+    priority: string
+    assignee_id: string
+    due_date: string
+}
+
+type TaskFormModalProps = {
+    projectId: string
+    members: ProjectMember[]
+    /** Edit this task; omit to create a new one. */
+    task?: Task | null
+    canDelete?: boolean
+    onSaved: (task: Task) => void
+    onDeleted?: (taskId: string) => void
+    onClose: () => void
+    onError: (message: string) => void
+}
+
+const EMPTY_TASK_FORM: TaskForm = {
     title: '',
     description: '',
     priority: 'medium',
@@ -17,7 +40,7 @@ const EMPTY_TASK_FORM = {
 const inputClass =
     'w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-indigo-500'
 
-function formFromTask(task) {
+function formFromTask(task: Task): TaskForm {
     return {
         title: task.title || '',
         description: task.description || '',
@@ -39,12 +62,12 @@ function TaskFormModal({
     onDeleted,
     onClose,
     onError,
-}) {
+}: TaskFormModalProps) {
     const toast = useToast()
     const isEditing = Boolean(task)
 
-    const [taskForm, setTaskForm] = useState(() =>
-        isEditing ? formFromTask(task) : EMPTY_TASK_FORM
+    const [taskForm, setTaskForm] = useState<TaskForm>(() =>
+        task ? formFromTask(task) : EMPTY_TASK_FORM
     )
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState(false)
@@ -57,7 +80,7 @@ function TaskFormModal({
     // Keep keyboard focus inside the dialog while it is open.
     useDialogFocus(dialogRef, true)
 
-    function handleInputChange(event) {
+    function handleInputChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
         const { name, value } = event.target
 
         setTaskForm((previous) => ({
@@ -66,28 +89,31 @@ function TaskFormModal({
         }))
     }
 
-    async function handleSubmit(event) {
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
 
         try {
             setSaving(true)
             onError('')
 
-            const savedTask = isEditing
-                ? await updateTask(task.id, taskForm)
-                : await createTask(projectId, taskForm)
+            const input: TaskInput = taskForm
+            const savedTask = task
+                ? await updateTask(task.id, input)
+                : await createTask(projectId, input)
 
             onSaved(savedTask)
             toast.success(isEditing ? 'Task updated.' : 'Task created.')
             onClose()
         } catch (err) {
-            onError(err.message || (isEditing ? 'Unable to update task.' : 'Unable to create task.'))
+            onError(getErrorMessage(err, isEditing ? 'Unable to update task.' : 'Unable to create task.'))
         } finally {
             setSaving(false)
         }
     }
 
     async function handleDelete() {
+        if (!task) return
+
         const confirmed = window.confirm(
             `Delete "${task.title}"? This cannot be undone.`
         )
@@ -100,11 +126,11 @@ function TaskFormModal({
 
             await deleteTask(task.id)
 
-            onDeleted(task.id)
+            onDeleted?.(task.id)
             toast.success('Task deleted.')
             onClose()
         } catch (err) {
-            onError(err.message || 'Unable to delete task.')
+            onError(getErrorMessage(err, 'Unable to delete task.'))
         } finally {
             setDeleting(false)
         }

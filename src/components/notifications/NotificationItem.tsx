@@ -1,7 +1,8 @@
-import { Bell, Mail, MessageCircle, RefreshCw, UserPlus } from 'lucide-react'
+import { Bell, Mail, MessageCircle, RefreshCw, UserPlus, type LucideIcon } from 'lucide-react'
+import type { Notification, NotificationType } from '../../types/app'
 import { formatNotificationDate } from './notificationUtils'
 
-const TYPE_ICONS = {
+const TYPE_ICONS: Record<NotificationType, LucideIcon> = {
     task_assigned: UserPlus,
     task_updated: RefreshCw,
     new_comment: MessageCircle,
@@ -9,7 +10,12 @@ const TYPE_ICONS = {
 }
 
 // One notification row, used by the bell dropdown and the Notifications page.
-function NotificationItem({ notification, onClick }) {
+type NotificationItemProps = {
+    notification: Notification
+    onClick: (notification: Notification) => void
+}
+
+function NotificationItem({ notification, onClick }: NotificationItemProps) {
     const Icon = TYPE_ICONS[notification.type] || Bell
 
     return (

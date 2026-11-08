@@ -1,19 +1,22 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CheckCircle2, AlertCircle, X } from 'lucide-react'
-import { ToastContext } from './useToast'
+import { ToastContext, type ToastApi } from './useToast'
 
-const DURATION_MS = { success: 4000, error: 6000 }
+type ToastType = 'success' | 'error'
+type Toast = { id: number; type: ToastType; message: string }
+
+const DURATION_MS: Record<ToastType, number> = { success: 4000, error: 6000 }
 const MAX_TOASTS = 4
 
-export function ToastProvider({ children }) {
-    const [toasts, setToasts] = useState([])
+export function ToastProvider({ children }: { children: ReactNode }) {
+    const [toasts, setToasts] = useState<Toast[]>([])
     const nextId = useRef(0)
 
-    const dismiss = useCallback((id) => {
+    const dismiss = useCallback((id: number) => {
         setToasts((current) => current.filter((toast) => toast.id !== id))
     }, [])
 
-    const show = useCallback((type, message) => {
+    const show = useCallback((type: ToastType, message: string) => {
         if (!message) return
 
         const id = ++nextId.current
@@ -23,7 +26,7 @@ export function ToastProvider({ children }) {
     }, [dismiss])
 
     // Stable object so components can safely list it as a dependency.
-    const api = useMemo(() => ({
+    const api = useMemo<ToastApi>(() => ({
         success: (message) => show('success', message),
         error: (message) => show('error', message),
     }), [show])

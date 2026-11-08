@@ -1,11 +1,11 @@
-
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { AuthContext } from './useAuth'
+import { AuthContext, type AuthContextValue } from './useAuth'
 import { setMonitoringUser } from '../lib/monitoring'
 
-export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null)
+export function AuthProvider({ children }: { children: ReactNode }) {
+    const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -62,8 +62,8 @@ export function AuthProvider({ children }) {
     }, [user?.id])
 
     // Register a new user
-    const signup = async (fullName, email, password) => {
-        const { data, error } = await supabase.auth.signUp({
+    const signup: AuthContextValue['signup'] = (fullName, email, password) =>
+        supabase.auth.signUp({
             email,
             password,
             options: {
@@ -73,21 +73,15 @@ export function AuthProvider({ children }) {
             },
         })
 
-        return { data, error }
-    }
-
     // Login existing user
-    const login = async (email, password) => {
-        const { data, error } = await supabase.auth.signInWithPassword({
+    const login: AuthContextValue['login'] = (email, password) =>
+        supabase.auth.signInWithPassword({
             email,
             password,
         })
 
-        return { data, error }
-    }
-
     // Logout current user
-    const logout = async () => {
+    const logout: AuthContextValue['logout'] = async () => {
         const { error } = await supabase.auth.signOut()
         return { error }
     }

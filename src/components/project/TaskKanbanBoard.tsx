@@ -4,29 +4,38 @@ import {
     Clock3,
     Circle,
     Pencil,
+    type LucideIcon,
 } from 'lucide-react'
 import {
     formatDueDate,
+    getMemberName,
     getPriorityBadgeClasses,
     isTaskOverdue,
 } from './taskUtils'
+import type { ProjectMember, Task, TaskStatus } from '../../types/app'
 
-function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, updatingTaskIds = [] }) {
-    const [draggedTaskId, setDraggedTaskId] = useState(null)
-    const [dragOverColumn, setDragOverColumn] = useState(null)
+type Column = { id: TaskStatus; title: string; icon: LucideIcon; color: string }
 
-    const columns = [
-        { id: 'todo', title: 'To Do', icon: Circle, color: 'text-slate-400' },
-        { id: 'in_progress', title: 'In Progress', icon: Clock3, color: 'text-yellow-400' },
-        { id: 'done', title: 'Done', icon: CheckCircle2, color: 'text-green-400' },
-    ]
+const COLUMNS: Column[] = [
+    { id: 'todo', title: 'To Do', icon: Circle, color: 'text-slate-400' },
+    { id: 'in_progress', title: 'In Progress', icon: Clock3, color: 'text-yellow-400' },
+    { id: 'done', title: 'Done', icon: CheckCircle2, color: 'text-green-400' },
+]
 
-    function getMemberName(userId) {
-        const member = members.find((item) => item.user_id === userId)
-        return member?.full_name || 'Unknown member'
-    }
+type TaskKanbanBoardProps = {
+    tasks?: Task[]
+    members?: ProjectMember[]
+    onStatusChange: (taskId: string, status: string) => void
+    onEdit?: (task: Task) => void
+    updatingTaskIds?: string[]
+}
 
-    function handleDrop(status) {
+function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, updatingTaskIds = [] }: TaskKanbanBoardProps) {
+    const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+    const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null)
+    const columns = COLUMNS
+
+    function handleDrop(status: TaskStatus) {
         if (!draggedTaskId) return
         const task = tasks.find((item) => item.id === draggedTaskId)
         if (task && task.status !== status) onStatusChange(task.id, status)
@@ -48,7 +57,9 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, upd
                             setDragOverColumn(column.id)
                         }}
                         onDragLeave={(event) => {
-                            if (!event.currentTarget.contains(event.relatedTarget)) {
+                            // relatedTarget is where the pointer went; ignore moves within the column.
+                            const next = event.relatedTarget
+                            if (!(next instanceof Node && event.currentTarget.contains(next))) {
                                 setDragOverColumn(null)
                             }
                         }}
@@ -111,7 +122,7 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, upd
                                         </p>
                                     )}
                                     <p className="mt-3 text-xs text-slate-400">
-                                        Assigned to: {task.assignee_id ? getMemberName(task.assignee_id) : 'Unassigned'}
+                                        Assigned to: {task.assignee_id ? getMemberName(members, task.assignee_id) : 'Unassigned'}
                                     </p>
                                     <select
                                         value={task.status}

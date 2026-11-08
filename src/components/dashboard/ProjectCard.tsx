@@ -1,6 +1,8 @@
 import { ArrowUpRight, CalendarDays, FolderKanban } from 'lucide-react'
+import type { Project, ProjectRole } from '../../types/app'
+import type { ProjectSummary } from '../../lib/projectService'
 
-const ROLE_STYLES = {
+const ROLE_STYLES: Record<ProjectRole, string> = {
     owner: 'bg-amber-500/10 text-amber-400',
     admin: 'bg-purple-500/10 text-purple-400',
     member: 'bg-indigo-500/10 text-indigo-400',
@@ -8,7 +10,13 @@ const ROLE_STYLES = {
 
 // Dashboard card for one project: your role, task progress and created date.
 // `summary` may be undefined while it loads (or if it failed to load).
-function ProjectCard({ project, summary, onOpen }) {
+type ProjectCardProps = {
+    project: Project
+    summary: ProjectSummary | undefined
+    onOpen: () => void
+}
+
+function ProjectCard({ project, summary, onOpen }: ProjectCardProps) {
     const role = summary?.role
     const total = summary?.total ?? 0
     const done = summary?.done ?? 0
@@ -27,7 +35,7 @@ function ProjectCard({ project, summary, onOpen }) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs capitalize ${ROLE_STYLES[role] || ROLE_STYLES.member}`}>
+                    <span className={`rounded-full px-3 py-1 text-xs capitalize ${role ? ROLE_STYLES[role] : ROLE_STYLES.member}`}>
                         {role || 'Project'}
                     </span>
 
@@ -74,10 +82,13 @@ function ProjectCard({ project, summary, onOpen }) {
                 </div>
             )}
 
-            <div className="mt-5 flex items-center gap-2 border-t border-slate-800 pt-4 text-xs text-slate-400">
-                <CalendarDays size={14} />
-                Created {new Date(project.created_at).toLocaleDateString()}
-            </div>
+            {/* created_at is nullable; new Date(null) would show 1 Jan 1970. */}
+            {project.created_at && (
+                <div className="mt-5 flex items-center gap-2 border-t border-slate-800 pt-4 text-xs text-slate-400">
+                    <CalendarDays size={14} />
+                    Created {new Date(project.created_at).toLocaleDateString()}
+                </div>
+            )}
         </button>
     )
 }

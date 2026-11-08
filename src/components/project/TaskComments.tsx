@@ -1,23 +1,33 @@
-import { useState } from 'react'
+import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { MessageCircle, Pencil, Send, Trash2, UserRound } from 'lucide-react'
 
 // Toggleable comment thread for one task, driven by useTaskComments().
-function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }) {
+import type { TaskCommentsApi } from '../../hooks/useTaskComments'
+import type { TaskComment } from '../../lib/commentService'
+
+type TaskCommentsProps = {
+    taskId: string
+    comments: TaskCommentsApi
+    currentUserId: string | null
+    isProjectAdmin: boolean
+}
+
+function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }: TaskCommentsProps) {
     const taskComments = comments.commentsByTask[taskId] || []
     const isOpen = comments.expandedTaskId === taskId
     const draft = comments.drafts[taskId] || ''
     const isSending = comments.sendingTaskId === taskId
 
     // Which comment is being edited, and its unsaved text.
-    const [editingCommentId, setEditingCommentId] = useState(null)
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
     const [editDraft, setEditDraft] = useState('')
 
-    function handleSubmit(event) {
+    function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         comments.submit(taskId)
     }
 
-    function startEditing(comment) {
+    function startEditing(comment: TaskComment) {
         setEditingCommentId(comment.id)
         setEditDraft(comment.content)
     }
@@ -27,13 +37,13 @@ function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }) {
         setEditDraft('')
     }
 
-    async function saveEdit(commentId) {
+    async function saveEdit(commentId: string) {
         const saved = await comments.edit(taskId, commentId, editDraft)
         if (saved) cancelEditing()
     }
 
     // Escape cancels editing; Ctrl/Cmd + Enter saves.
-    function handleEditKeyDown(event, commentId) {
+    function handleEditKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, commentId: string) {
         if (event.key === 'Escape') {
             event.stopPropagation()
             cancelEditing()
@@ -91,9 +101,12 @@ function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }) {
                                             <div className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl p-3">
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                                     <p className="text-sm font-medium">{comment.author_name}</p>
-                                                    <span className="text-xs text-slate-400">
-                                                        {new Date(comment.created_at).toLocaleString()}
-                                                    </span>
+                                                    {/* created_at is nullable; new Date(null) would show 1 Jan 1970. */}
+                                                    {comment.created_at && (
+                                                        <span className="text-xs text-slate-400">
+                                                            {new Date(comment.created_at).toLocaleString()}
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 {editingCommentId === comment.id ? (
