@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useToast } from '../../context/useToast'
 import {
     cancelProjectInvitation,
     createProjectInvitation,
@@ -11,6 +12,7 @@ import {
 
 // Invite people by email and manage pending invitations (owners and admins).
 function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError }) {
+    const toast = useToast()
     const [invitationEmail, setInvitationEmail] = useState('')
     const [invitationSaving, setInvitationSaving] = useState(false)
     const [cancellingInvitationId, setCancellingInvitationId] = useState(null)
@@ -34,6 +36,7 @@ function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError
             ])
 
             setInvitationEmail('')
+            toast.success(`Invitation sent to ${newInvitation.invited_email}.`)
         } catch (err) {
             onError(err.message || 'Unable to create invitation.')
         } finally {
@@ -48,6 +51,7 @@ function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError
             onError('')
 
             await cancelProjectInvitation(invitationId)
+            toast.success('Invitation cancelled.')
 
             onInvitationsChange((previous) =>
                 previous.filter(

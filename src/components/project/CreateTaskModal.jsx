@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useToast } from '../../context/useToast'
 import { X } from 'lucide-react'
 import { createTask } from '../../lib/taskService'
 import { getLocalDateString } from './taskUtils'
@@ -17,6 +18,7 @@ const inputClass =
 
 // Modal form for creating a task. Calls onCreated(task) and closes on success.
 function CreateTaskModal({ projectId, members, onCreated, onClose, onError }) {
+    const toast = useToast()
     const [taskForm, setTaskForm] = useState(EMPTY_TASK_FORM)
     const [saving, setSaving] = useState(false)
     const dialogRef = useRef(null)
@@ -43,6 +45,7 @@ function CreateTaskModal({ projectId, members, onCreated, onClose, onError }) {
             const newTask = await createTask(projectId, taskForm)
 
             onCreated(newTask)
+            toast.success('Task created.')
             onClose()
         } catch (err) {
             onError(err.message || 'Unable to create task.')

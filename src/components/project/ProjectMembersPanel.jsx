@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useToast } from '../../context/useToast'
 import {
     getProjectMembers,
     removeProjectMember,
@@ -11,6 +12,7 @@ import {
 
 // List project members with role changes and removal.
 function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner, isProjectAdmin, onMembersChange, onError }) {
+    const toast = useToast()
     const [updatingMemberRoleId, setUpdatingMemberRoleId] = useState(null)
     const [removingMemberId, setRemovingMemberId] = useState(null)
 
@@ -40,6 +42,7 @@ function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner
             await updateProjectMemberRole(projectId, member.user_id, nextRole)
             const updatedMembers = await getProjectMembers(projectId)
             onMembersChange(updatedMembers)
+            toast.success(`${member.full_name} is now ${nextRole === 'admin' ? 'an admin' : 'a member'}.`)
         } catch (err) {
             console.error('Member role update failed:', err)
             onError(err.message || 'Unable to update member role.')
@@ -69,6 +72,7 @@ function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner
             onError('')
             await removeProjectMember(projectId, member.user_id)
             onMembersChange((previous) => previous.filter((item) => item.user_id !== member.user_id))
+            toast.success(`${member.full_name} was removed from the project.`)
         } catch (err) {
             console.error('Remove project member failed:', err)
             onError(err.message || 'Unable to remove this member.')

@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useToast } from '../../context/useToast'
 import { updateProject } from '../../lib/projectService'
 
 // Edit the project name and description (owners and admins only).
 function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectChange, onError }) {
+    const toast = useToast()
     const [showProjectSettings, setShowProjectSettings] = useState(false)
     const [savingProjectSettings, setSavingProjectSettings] = useState(false)
     const [projectSettingsName, setProjectSettingsName] = useState('')
@@ -46,6 +48,7 @@ function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectCha
 
             onProjectChange((previous) => ({ ...previous, ...updatedProject }))
             setShowProjectSettings(false)
+            toast.success('Project settings saved.')
         } catch (err) {
             console.error('Project settings update failed:', err)
             onError(err.message || 'Unable to update project settings.')

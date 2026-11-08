@@ -1,10 +1,9 @@
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
     ArrowLeft,
     Plus,
-    X,
     ClipboardList,
     CheckCircle2,
     Clock3,
@@ -26,6 +25,7 @@ import { getProjectInvitations } from '../lib/invitationService'
 
 import { getProjectActivities } from '../lib/activityService'
 import { useTaskComments } from '../hooks/useTaskComments'
+import { useToast } from '../context/useToast'
 
 import TaskKanbanBoard from '../components/project/TaskKanbanBoard'
 import TaskReminders from '../components/project/TaskReminders'
@@ -67,7 +67,14 @@ function ProjectDetails() {
     const [filters, setFilters] = useState(DEFAULT_TASK_FILTERS)
 
     // Comments for all tasks (state, handlers and realtime sync).
-    const comments = useTaskComments(projectId, setError)
+    // Action errors appear as pop-up notices. Empty messages (used by
+    // panels to clear a previous error) are ignored.
+    const toast = useToast()
+    const notifyError = useCallback((message) => {
+        if (message) toast.error(message)
+    }, [toast])
+
+    const comments = useTaskComments(projectId, notifyError)
     const { forgetTask } = comments
 
     const isProjectAdmin = members.some(
@@ -365,14 +372,13 @@ function ProjectDetails() {
         const previousValue = task[field]
 
         setUpdatingTaskIds((ids) => [...ids, taskId])
-        setError('')
         patchTask(taskId, { [field]: value })
 
         try {
             await saveFn(taskId, value)
         } catch (err) {
             patchTask(taskId, { [field]: previousValue })
-            setError(err.message || errorMessage)
+            notifyError(err.message || errorMessage)
         } finally {
             setUpdatingTaskIds((ids) => ids.filter((id) => id !== taskId))
         }
@@ -490,27 +496,12 @@ function ProjectDetails() {
                     </div>
                 </div>
 
-                {/* Error message */}
-                {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 text-red-300 p-4 rounded-xl mb-6 flex items-start justify-between gap-3">
-                        <p>{error}</p>
-
-                        <button
-                            type="button"
-                            onClick={() => setError('')}
-                            aria-label="Dismiss error"
-                        >
-                            <X size={18} />
-                        </button>
-                    </div>
-                )}
-
                 <ProjectSettingsPanel
                     project={project}
                     projectId={projectId}
                     isProjectAdmin={isProjectAdmin}
                     onProjectChange={setProject}
-                    onError={setError}
+                    onError={notifyError}
                 />
 
                 <ProjectMembersPanel
@@ -520,7 +511,7 @@ function ProjectDetails() {
                     isProjectOwner={isProjectOwner}
                     isProjectAdmin={isProjectAdmin}
                     onMembersChange={setMembers}
-                    onError={setError}
+                    onError={notifyError}
                 />
 
                 {isProjectOwner && (
@@ -530,7 +521,7 @@ function ProjectDetails() {
                         currentUserId={currentUserId}
                         isProjectOwner={isProjectOwner}
                         onMembersChange={setMembers}
-                        onError={setError}
+                        onError={notifyError}
                     />
                 )}
 
@@ -538,7 +529,7 @@ function ProjectDetails() {
                     project={project}
                     projectId={projectId}
                     isProjectOwner={isProjectOwner}
-                    onError={setError}
+                    onError={notifyError}
                 />
 
                 {isProjectAdmin && (
@@ -546,7 +537,7 @@ function ProjectDetails() {
                         projectId={projectId}
                         invitations={invitations}
                         onInvitationsChange={setInvitations}
-                        onError={setError}
+                        onError={notifyError}
                     />
                 )}
 
@@ -723,7 +714,7 @@ function ProjectDetails() {
                         members={members}
                         onCreated={handleTaskCreated}
                         onClose={() => setShowTaskForm(false)}
-                        onError={setError}
+                        onError={notifyError}
                     />
                 )}
             </div>

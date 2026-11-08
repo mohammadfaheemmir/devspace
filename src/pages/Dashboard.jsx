@@ -37,6 +37,7 @@ import {
 
 import { getMyProfile } from '../lib/profileService'
 import { useDismiss } from '../hooks/useDismiss'
+import { useToast } from '../context/useToast'
 
 
 function formatNotificationDate(date) {
@@ -52,10 +53,11 @@ function Dashboard() {
     const navigate = useNavigate()
     const location = useLocation()
 
-    // One-time message passed from another page, e.g. after deleting a project.
-    const [flashMessage, setFlashMessage] = useState(
-        () => location.state?.message || ''
-    )
+    const toast = useToast()
+
+    // Remembers which navigation's one-time message was already shown, so
+    // React StrictMode's double effect run does not show it twice.
+    const shownMessageKey = useRef(null)
 
     // Profile from the profiles table (kept up to date by Profile Settings).
     const [profile, setProfile] = useState(null)
@@ -108,13 +110,20 @@ function Dashboard() {
 
     const profileInitial = displayName.charAt(0).toUpperCase()
 
-    // Clear the one-time message from browser history so it does not
-    // reappear on refresh or when navigating back.
+    // Show a one-time message passed from another page (e.g. after deleting
+    // or leaving a project), then clear it from browser history so it does
+    // not reappear on refresh or when navigating back.
     useEffect(() => {
-        if (location.state?.message) {
-            navigate(location.pathname, { replace: true, state: null })
+        const message = location.state?.message
+        if (!message) return
+
+        if (shownMessageKey.current !== location.key) {
+            shownMessageKey.current = location.key
+            toast.success(message)
         }
-    }, [location.pathname, location.state, navigate])
+
+        navigate(location.pathname, { replace: true, state: null })
+    }, [location.key, location.pathname, location.state, navigate, toast])
 
     // Fetch the user's profile (name and avatar)
     useEffect(() => {
@@ -285,7 +294,7 @@ function Dashboard() {
         setError('')
 
         if (!projectName.trim()) {
-            setError('Project name is required.')
+            toast.error('Project name is required.')
             return
         }
 
@@ -305,9 +314,10 @@ function Dashboard() {
             setProjectName('')
             setDescription('')
             setCreating(false)
+            toast.success(`Project "${newProject.name}" created.`)
         } catch (err) {
             console.error('Project creation failed:', err)
-            setError(err.message || 'Unable to create project.')
+            toast.error(err.message || 'Unable to create project.')
         } finally {
             setSaving(false)
         }
@@ -400,7 +410,7 @@ function Dashboard() {
         const { error } = await logout()
 
         if (error) {
-            setError(error.message)
+            toast.error(error.message)
             return
         }
 
@@ -660,23 +670,6 @@ function Dashboard() {
                     </button>
 
                 </div>
-
-                {/* One-time success message (e.g. after deleting a project) */}
-                {flashMessage && (
-                    <div
-                        role="status"
-                        className="mt-6 flex items-start justify-between gap-3 rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-400"
-                    >
-                        <p>{flashMessage}</p>
-
-                        <button
-                            onClick={() => setFlashMessage('')}
-                            aria-label="Dismiss message"
-                        >
-                            <X size={18} />
-                        </button>
-                    </div>
-                )}
 
                 {/* General error message */}
                 {error && (

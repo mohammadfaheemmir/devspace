@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useToast } from '../../context/useToast'
 import {
     getProjectMembers,
     transferProjectOwnership,
@@ -6,6 +7,7 @@ import {
 
 // Hand project ownership to another member (current owner only).
 function OwnershipTransferPanel({ projectId, members, currentUserId, isProjectOwner, onMembersChange, onError }) {
+    const toast = useToast()
     const [selectedNewOwnerId, setSelectedNewOwnerId] = useState('')
     const [transferringOwnership, setTransferringOwnership] = useState(false)
 
@@ -45,6 +47,7 @@ function OwnershipTransferPanel({ projectId, members, currentUserId, isProjectOw
             const updatedMembers = await getProjectMembers(projectId)
             onMembersChange(updatedMembers)
             setSelectedNewOwnerId('')
+            toast.success(`Ownership transferred to ${selectedMember.full_name}.`)
         } catch (err) {
             console.error('Ownership transfer failed:', err)
             onError(err.message || 'Unable to transfer project ownership.')

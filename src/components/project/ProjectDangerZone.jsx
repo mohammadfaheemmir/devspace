@@ -55,7 +55,10 @@ function ProjectDangerZone({ project, projectId, isProjectOwner, onError }) {
             setLeavingProject(true)
             onError('')
             await leaveProject(projectId)
-            navigate('/dashboard')
+            navigate('/dashboard', {
+                replace: true,
+                state: { message: `You left "${project?.name || 'the project'}".` },
+            })
         } catch (err) {
             console.error('Leave project failed:', err)
             onError(err.message || 'Unable to leave this project.')
