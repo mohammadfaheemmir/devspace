@@ -11,6 +11,8 @@ and live updates.
 Built with React 19, Vite, Tailwind CSS 4 and [Supabase](https://supabase.com)
 (Postgres, Auth, Storage and Realtime).
 
+See [CHANGELOG.md](CHANGELOG.md) for what has changed.
+
 ## Getting started
 
 ```bash
