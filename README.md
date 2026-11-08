@@ -1,19 +1,66 @@
-https://developersspace.netlify.app/login
+# DevSpace
 
+A team project-management app: projects, tasks (list and Kanban board),
+comments, members and roles, invitations, an activity feed, due-date reminders
+and live updates.
 
-# React + Vite
+**Live site:** https://developersspace.netlify.app/login
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Built with React 19, Vite, Tailwind CSS 4 and [Supabase](https://supabase.com)
+(Postgres, Auth, Storage and Realtime).
 
-Currently, two official plugins are available:
+## Getting started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+cp .env.example .env   # then fill in your Supabase URL and publishable key
+npm run dev
+```
 
-## React Compiler
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the development server |
+| `npm run build` | Build for production into `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | Lint with Oxlint |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Project structure
 
-## Expanding the Oxlint configuration
+```
+src/
+  pages/               Route pages (Login, Signup, Dashboard, ProjectDetails, ProfileSettings)
+  components/          Route guards
+  components/project/  Project page panels, task list/board, comments, task form
+  components/dashboard/ Dashboard project card
+  context/             Auth and toast providers (+ useAuth / useToast hooks)
+  hooks/               useTaskComments, useDismiss
+  lib/                 Supabase client and data services
+supabase/migrations/   Database schema, access rules, functions and triggers
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Database
+
+The complete database setup lives in `supabase/migrations/`:
+
+| Migration | Contents |
+|---|---|
+| `20261108000000_baseline_schema.sql` | Tables, constraints, indexes, functions, triggers, Row Level Security policies, the `avatars` storage bucket and Realtime publication, reconstructed from the live project |
+| `20261108000100_security_hardening.sql` | Fixes from the schema review: removes direct member inserts, makes a task's creator/project read-only, keeps `projects.owner_id` in sync on ownership transfer, and drops a debug function |
+
+Access control is enforced in the database with Row Level Security. Project
+roles are `owner`, `admin` and `member`, stored in `project_members`; helper
+functions `is_project_member`, `is_project_admin` and `is_project_owner` are
+used by the policies.
+
+**Using the Supabase CLI with the existing project:** the live database was
+created before these files existed, so tell the CLI the baseline is already
+applied before pushing anything new:
+
+```bash
+npx supabase link --project-ref <your-project-ref>
+npx supabase migration repair --status applied 20261108000000
+npx supabase db push    # applies any newer migrations
+```
+
+**Setting up a fresh project:** run the migrations in order (for example with
+`npx supabase db push` against an empty project).
