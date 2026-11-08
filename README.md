@@ -23,6 +23,8 @@ npm run dev
 | `npm run build` | Build for production into `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | Lint with Oxlint |
+| `npm test` | Run the test suite once (Vitest) |
+| `npm run test:watch` | Re-run tests on every change |
 
 ## Project structure
 
@@ -37,6 +39,13 @@ src/
   lib/                 Supabase client and data services
 supabase/migrations/   Database schema, access rules, functions and triggers
 ```
+
+## Tests
+
+Tests live next to the code they cover (`*.test.js` / `*.test.jsx`) and run with
+[Vitest](https://vitest.dev) and React Testing Library in a simulated browser.
+They never contact Supabase: the client gets dummy settings and services are
+mocked (see `src/test/`).
 
 ## Database
 
