@@ -683,7 +683,7 @@ function ProjectDetails() {
                     tasks.length === 0 ? (
                         <div className="border border-dashed border-slate-700 rounded-2xl p-10 text-center">
                             <ClipboardList
-                                className="mx-auto text-slate-500 mb-3"
+                                className="mx-auto text-slate-400 mb-3"
                                 size={36}
                             />
 
@@ -697,7 +697,7 @@ function ProjectDetails() {
                         </div>
                     ) : filteredTasks.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-slate-700 p-10 text-center">
-                            <Search size={32} className="mx-auto mb-3 text-slate-500" />
+                            <Search size={32} className="mx-auto mb-3 text-slate-400" />
                             <h3 className="font-medium text-slate-200">No matching tasks</h3>
                             <p className="mt-2 text-sm text-slate-400">Try changing your search or filters.</p>
                             <button

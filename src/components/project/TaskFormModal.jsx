@@ -4,6 +4,7 @@ import { useToast } from '../../context/useToast'
 import { createTask, deleteTask, updateTask } from '../../lib/taskService'
 import { getLocalDateString } from './taskUtils'
 import { useDismiss } from '../../hooks/useDismiss'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 
 const EMPTY_TASK_FORM = {
     title: '',
@@ -52,6 +53,9 @@ function TaskFormModal({
 
     // Escape or a click on the backdrop closes the modal (not while busy).
     useDismiss(dialogRef, !busy, onClose)
+
+    // Keep keyboard focus inside the dialog while it is open.
+    useDialogFocus(dialogRef, true)
 
     function handleInputChange(event) {
         const { name, value } = event.target
@@ -219,7 +223,7 @@ function TaskFormModal({
                             min={isEditing ? undefined : getLocalDateString()}
                             className={`${inputClass} text-slate-200`}
                         />
-                        <p className="mt-2 text-xs text-slate-500">
+                        <p className="mt-2 text-xs text-slate-400">
                             Choose the date by which this task should be completed.
                         </p>
                     </div>

@@ -101,7 +101,7 @@ function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectCha
                             placeholder="Describe the purpose of this project..."
                             className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-indigo-500"
                         />
-                        <p className="mt-1 text-xs text-slate-500">Up to 1,000 characters.</p>
+                        <p className="mt-1 text-xs text-slate-400">Up to 1,000 characters.</p>
                     </div>
                     <div className="flex flex-wrap justify-end gap-3">
                         <button
@@ -124,7 +124,7 @@ function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectCha
             )}
 
             {!isProjectAdmin && (
-                <p className="mt-3 text-sm text-slate-500">Only project owners and admins can edit these settings.</p>
+                <p className="mt-3 text-sm text-slate-400">Only project owners and admins can edit these settings.</p>
             )}
         </section>
     )

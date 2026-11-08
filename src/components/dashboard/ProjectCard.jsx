@@ -31,7 +31,7 @@ function ProjectCard({ project, summary, onOpen }) {
                         {role || 'Project'}
                     </span>
 
-                    <ArrowUpRight size={17} className="text-slate-500" />
+                    <ArrowUpRight size={17} className="text-slate-400" />
                 </div>
             </div>
 
@@ -45,7 +45,7 @@ function ProjectCard({ project, summary, onOpen }) {
             {summary && (
                 <div className="mt-5">
                     {total === 0 ? (
-                        <p className="text-xs text-slate-500">No tasks yet</p>
+                        <p className="text-xs text-slate-400">No tasks yet</p>
                     ) : (
                         <>
                             <div className="flex items-center justify-between text-xs text-slate-400">
@@ -74,7 +74,7 @@ function ProjectCard({ project, summary, onOpen }) {
                 </div>
             )}
 
-            <div className="mt-5 flex items-center gap-2 border-t border-slate-800 pt-4 text-xs text-slate-500">
+            <div className="mt-5 flex items-center gap-2 border-t border-slate-800 pt-4 text-xs text-slate-400">
                 <CalendarDays size={14} />
                 Created {new Date(project.created_at).toLocaleDateString()}
             </div>

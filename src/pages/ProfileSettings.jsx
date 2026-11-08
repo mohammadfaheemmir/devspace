@@ -331,10 +331,12 @@ function ProfileSettings() {
                     {/* Full name */}
                     <form onSubmit={handleSaveName} className="space-y-4">
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-300">
+                            <label htmlFor="profile-name" className="mb-2 block text-sm font-medium text-slate-300">
                                 Full name
                             </label>
                             <input
+                                id="profile-name"
+                                autoComplete="name"
                                 type="text"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
@@ -373,10 +375,11 @@ function ProfileSettings() {
 
                     <form onSubmit={handleChangeEmail} className="space-y-4">
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-300">
+                            <label htmlFor="profile-current-email" className="mb-2 block text-sm font-medium text-slate-300">
                                 Current email
                             </label>
                             <input
+                                id="profile-current-email"
                                 type="email"
                                 value={profile?.email || ''}
                                 readOnly
@@ -385,10 +388,12 @@ function ProfileSettings() {
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-300">
+                            <label htmlFor="profile-new-email" className="mb-2 block text-sm font-medium text-slate-300">
                                 New email address
                             </label>
                             <input
+                                id="profile-new-email"
+                                autoComplete="email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -433,10 +438,11 @@ function ProfileSettings() {
 
                     <form onSubmit={handleChangePassword} className="space-y-4">
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-300">
+                            <label htmlFor="profile-new-password" className="mb-2 block text-sm font-medium text-slate-300">
                                 New password
                             </label>
                             <input
+                                id="profile-new-password"
                                 type="password"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
@@ -449,10 +455,11 @@ function ProfileSettings() {
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-slate-300">
+                            <label htmlFor="profile-confirm-password" className="mb-2 block text-sm font-medium text-slate-300">
                                 Confirm new password
                             </label>
                             <input
+                                id="profile-confirm-password"
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}

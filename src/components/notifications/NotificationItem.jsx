@@ -44,7 +44,7 @@ function NotificationItem({ notification, onClick }) {
                         </p>
                     )}
 
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-slate-400">
                         {formatNotificationDate(notification.created_at)}
                     </p>
                 </div>

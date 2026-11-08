@@ -113,7 +113,7 @@ function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError
                 </h3>
 
                 {invitations.length === 0 ? (
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-400">
                         No invitations created yet.
                     </p>
                 ) : (

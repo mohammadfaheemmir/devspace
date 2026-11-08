@@ -138,7 +138,7 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, upd
                                 </article>
                             ))}
                             {columnTasks.length === 0 && (
-                                <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">
+                                <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">
                                     No tasks in this column
                                 </div>
                             )}

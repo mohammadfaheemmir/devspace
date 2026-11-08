@@ -117,14 +117,14 @@ function ProjectActivityFeed({ activities, loading, error, onRefresh, currentUse
                 <div className="py-10 text-center">
                     <Activity
                         size={34}
-                        className="mx-auto mb-3 text-slate-600"
+                        className="mx-auto mb-3 text-slate-500"
                     />
 
                     <h3 className="font-medium text-slate-300">
                         No activity yet
                     </h3>
 
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p className="mt-2 text-sm text-slate-400">
                         Project updates will appear here as your
                         team works.
                     </p>
@@ -186,7 +186,7 @@ function ProjectActivityFeed({ activities, loading, error, onRefresh, currentUse
                                         </p>
                                     )}
 
-                                    <p className="mt-3 text-xs text-slate-500">
+                                    <p className="mt-3 text-xs text-slate-400">
                                         {new Date(
                                             item.created_at
                                         ).toLocaleString()}

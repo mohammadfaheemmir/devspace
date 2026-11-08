@@ -14,21 +14,21 @@ function TaskFilters({ filters, onChange, onReset, members, shownCount, totalCou
             <div className="mb-4 flex items-center gap-2 text-slate-300">
                 <SlidersHorizontal size={18} className="text-indigo-400" />
                 <h3 className="text-sm font-semibold">Find and organise tasks</h3>
-                <span className="ml-auto text-xs text-slate-500">
+                <span className="ml-auto text-xs text-slate-400">
                     Showing {shownCount} of {totalCount}
                 </span>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <label className="relative block sm:col-span-2 lg:col-span-1">
-                    <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                         type="search"
                         value={filters.search}
                         onChange={update('search')}
                         placeholder="Search title or description..."
                         aria-label="Search tasks"
-                        className="w-full rounded-lg border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 text-sm outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+                        className="w-full rounded-lg border border-slate-700 bg-slate-950 py-2.5 pl-10 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500"
                     />
                 </label>
 

@@ -135,7 +135,7 @@ function TaskReminders({ projectId, projectName, tasks, tasksLoaded }) {
                             <div className="px-5 py-8 text-center">
                                 <CheckCheck size={25} className="mx-auto mb-2 text-green-400" />
                                 <p className="text-sm font-medium text-slate-200">You're all caught up</p>
-                                <p className="mt-1 text-xs text-slate-500">No tasks are due in the next three days.</p>
+                                <p className="mt-1 text-xs text-slate-400">No tasks are due in the next three days.</p>
                             </div>
                         ) : (
                             taskNotifications.map((notification) => {
@@ -160,7 +160,7 @@ function TaskReminders({ projectId, projectName, tasks, tasksLoaded }) {
                                         <span className="min-w-0 flex-1">
                                             <span className="block break-words text-sm font-medium text-slate-100">{notification.task.title}</span>
                                             <span className={`mt-1 block text-xs ${isOverdue ? 'text-red-400' : 'text-amber-400'}`}>{dueLabel} · {formatDueDate(notification.task.due_date)}</span>
-                                            <span className="mt-1 block text-xs text-slate-500">{projectName}</span>
+                                            <span className="mt-1 block text-xs text-slate-400">{projectName}</span>
                                         </span>
                                         {!isRead && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-indigo-400" />}
                                     </button>

@@ -38,6 +38,7 @@ import { getNotificationLink } from '../components/notifications/notificationUti
 
 import { getMyProfile } from '../lib/profileService'
 import { useDismiss } from '../hooks/useDismiss'
+import { useDialogFocus } from '../hooks/useDialogFocus'
 import { useToast } from '../context/useToast'
 
 
@@ -96,6 +97,7 @@ function Dashboard() {
     const createDialogRef = useRef(null)
 
     useDismiss(notificationMenuRef, notificationsOpen, () => setNotificationsOpen(false))
+    useDialogFocus(createDialogRef, creating)
     useDismiss(createDialogRef, creating && !saving, () => {
         setCreating(false)
         setError('')
@@ -435,14 +437,14 @@ function Dashboard() {
 
                                                 <Bell
                                                     size={30}
-                                                    className="mx-auto text-slate-500"
+                                                    className="mx-auto text-slate-400"
                                                 />
 
                                                 <p className="mt-3 text-sm font-medium text-slate-300">
                                                     No notifications yet
                                                 </p>
 
-                                                <p className="mt-1 text-xs text-slate-500">
+                                                <p className="mt-1 text-xs text-slate-400">
                                                     Your notifications will appear here.
                                                 </p>
 
@@ -615,14 +617,14 @@ function Dashboard() {
 
                             <Mail
                                 size={30}
-                                className="mx-auto text-slate-500"
+                                className="mx-auto text-slate-400"
                             />
 
                             <p className="mt-3 font-medium text-slate-300">
                                 No pending invitations
                             </p>
 
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-1 text-sm text-slate-400">
                                 When someone invites you to a project, it will appear here.
                             </p>
 
@@ -657,7 +659,7 @@ function Dashboard() {
 
                                     </div>
 
-                                    <div className="mt-5 flex flex-wrap gap-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
+                                    <div className="mt-5 flex flex-wrap gap-4 border-t border-slate-800 pt-4 text-xs text-slate-400">
 
                                         <span className="flex items-center gap-2">
                                             <CalendarDays size={14} />
@@ -755,7 +757,7 @@ function Dashboard() {
                             <label className="relative block w-full sm:w-72">
                                 <Search
                                     size={16}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                                 />
                                 <input
                                     type="search"
@@ -763,7 +765,7 @@ function Dashboard() {
                                     onChange={(e) => setProjectSearch(e.target.value)}
                                     placeholder="Search projects..."
                                     aria-label="Search projects"
-                                    className="w-full rounded-lg border border-slate-700 bg-slate-900 py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+                                    className="w-full rounded-lg border border-slate-700 bg-slate-900 py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500"
                                 />
                             </label>
                         )}
@@ -781,7 +783,7 @@ function Dashboard() {
 
                             <FolderKanban
                                 size={40}
-                                className="mx-auto text-slate-500"
+                                className="mx-auto text-slate-400"
                             />
 
                             <h4 className="mt-4 text-lg font-semibold">
@@ -807,7 +809,7 @@ function Dashboard() {
                     ) : filteredProjects.length === 0 ? (
 
                         <div className="rounded-xl border border-dashed border-slate-700 p-10 text-center">
-                            <Search size={30} className="mx-auto text-slate-500" />
+                            <Search size={30} className="mx-auto text-slate-400" />
                             <p className="mt-3 font-medium text-slate-300">
                                 No projects match "{projectSearch.trim()}"
                             </p>
@@ -878,11 +880,12 @@ function Dashboard() {
 
                             <div>
 
-                                <label className="mb-2 block text-sm text-slate-300">
+                                <label htmlFor="new-project-name" className="mb-2 block text-sm text-slate-300">
                                     Project Name
                                 </label>
 
                                 <input
+                                    id="new-project-name"
                                     type="text"
                                     value={projectName}
                                     onChange={(e) => setProjectName(e.target.value)}
@@ -896,11 +899,12 @@ function Dashboard() {
 
                             <div>
 
-                                <label className="mb-2 block text-sm text-slate-300">
+                                <label htmlFor="new-project-description" className="mb-2 block text-sm text-slate-300">
                                     Description
                                 </label>
 
                                 <textarea
+                                    id="new-project-description"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="Describe your project..."

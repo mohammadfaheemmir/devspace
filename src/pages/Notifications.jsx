@@ -110,11 +110,11 @@ function Notifications() {
                         </p>
                     ) : visibleNotifications.length === 0 ? (
                         <div className="p-10 text-center">
-                            <Bell size={32} className="mx-auto text-slate-500" />
+                            <Bell size={32} className="mx-auto text-slate-400" />
                             <p className="mt-3 font-medium text-slate-300">
                                 {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
                             </p>
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-1 text-sm text-slate-400">
                                 {filter === 'unread'
                                     ? 'Everything has been read.'
                                     : 'Assignments, comments and invitations will appear here.'}

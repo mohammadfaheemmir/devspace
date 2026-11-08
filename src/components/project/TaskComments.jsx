@@ -69,7 +69,7 @@ function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }) {
                     ) : (
                         <>
                             {taskComments.length === 0 ? (
-                                <p className="text-sm text-slate-500">
+                                <p className="text-sm text-slate-400">
                                     No comments yet. Start the discussion.
                                 </p>
                             ) : (
@@ -91,7 +91,7 @@ function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }) {
                                             <div className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl p-3">
                                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                                     <p className="text-sm font-medium">{comment.author_name}</p>
-                                                    <span className="text-xs text-slate-500">
+                                                    <span className="text-xs text-slate-400">
                                                         {new Date(comment.created_at).toLocaleString()}
                                                     </span>
                                                 </div>

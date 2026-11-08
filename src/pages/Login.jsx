@@ -44,10 +44,12 @@ function Login() {
 
                     <form onSubmit={handleLogin} className="mt-8 space-y-5">
                         <div>
-                            <label className="mb-2 block text-sm text-slate-300">
+                            <label htmlFor="login-email" className="mb-2 block text-sm text-slate-300">
                                 Email address
                             </label>
                             <input
+                                id="login-email"
+                                autoComplete="email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -58,10 +60,12 @@ function Login() {
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm text-slate-300">
+                            <label htmlFor="login-password" className="mb-2 block text-sm text-slate-300">
                                 Password
                             </label>
                             <input
+                                id="login-password"
+                                autoComplete="current-password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

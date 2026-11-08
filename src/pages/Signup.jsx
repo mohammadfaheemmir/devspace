@@ -57,10 +57,12 @@ function Signup() {
 
                     <form onSubmit={handleSignup} className="mt-8 space-y-5">
                         <div>
-                            <label className="mb-2 block text-sm text-slate-300">
+                            <label htmlFor="signup-name" className="mb-2 block text-sm text-slate-300">
                                 Full name
                             </label>
                             <input
+                                id="signup-name"
+                                autoComplete="name"
                                 type="text"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
@@ -71,10 +73,12 @@ function Signup() {
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm text-slate-300">
+                            <label htmlFor="signup-email" className="mb-2 block text-sm text-slate-300">
                                 Email address
                             </label>
                             <input
+                                id="signup-email"
+                                autoComplete="email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -85,10 +89,12 @@ function Signup() {
                         </div>
 
                         <div>
-                            <label className="mb-2 block text-sm text-slate-300">
+                            <label htmlFor="signup-password" className="mb-2 block text-sm text-slate-300">
                                 Password
                             </label>
                             <input
+                                id="signup-password"
+                                autoComplete="new-password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
