@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useDialogFocus } from './useDialogFocus'
 
-function Dialog({ onClose }) {
+function Dialog({ onClose }: { onClose: () => void }) {
     const ref = useRef(null)
     useDialogFocus(ref, true)
 

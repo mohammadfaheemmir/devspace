@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 
 vi.mock('../lib/monitoring', () => ({ reportError: vi.fn() }))
@@ -6,7 +7,7 @@ vi.mock('../lib/monitoring', () => ({ reportError: vi.fn() }))
 const { reportError } = await import('../lib/monitoring')
 const { default: ErrorBoundary } = await import('./ErrorBoundary')
 
-function Broken() {
+function Broken(): ReactNode {
     throw new Error('Boom')
 }
 

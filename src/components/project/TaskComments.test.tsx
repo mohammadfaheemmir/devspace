@@ -1,18 +1,26 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { TaskComment } from '../../lib/commentService'
+import type { TaskCommentsApi } from '../../hooks/useTaskComments'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TaskComments from './TaskComments'
 
-const myComment = {
+const myComment: TaskComment = {
     id: 'c1',
+    task_id: 't1',
+    project_id: 'p1',
+    author_avatar: null,
     author_id: 'me',
     author_name: 'Me',
     content: 'First draft',
     created_at: '2026-01-01T10:00:00Z',
 }
 
-const theirComment = {
+const theirComment: TaskComment = {
     id: 'c2',
+    task_id: 't1',
+    project_id: 'p1',
+    author_avatar: null,
     author_id: 'someone-else',
     author_name: 'Grace',
     content: 'Looks good',
@@ -20,7 +28,7 @@ const theirComment = {
 }
 
 // A fake of the object returned by useTaskComments(), with the thread open.
-function fakeComments(overrides = {}) {
+function fakeComments(overrides: Partial<TaskCommentsApi> = {}): TaskCommentsApi {
     return {
         expandedTaskId: 't1',
         commentsByTask: { t1: [myComment, theirComment] },
@@ -35,6 +43,7 @@ function fakeComments(overrides = {}) {
         submit: vi.fn(),
         edit: vi.fn().mockResolvedValue(true),
         remove: vi.fn(),
+        forgetTask: vi.fn(),
         ...overrides,
     }
 }

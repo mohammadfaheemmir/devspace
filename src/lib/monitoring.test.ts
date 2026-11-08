@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 // The DSN is read when the module loads, so each test imports a fresh copy.
-async function loadMonitoring(dsn) {
+async function loadMonitoring(dsn: string) {
     vi.resetModules()
     vi.stubEnv('VITE_SENTRY_DSN', dsn)
 
@@ -57,7 +57,7 @@ describe('monitoring with a DSN', () => {
             },
         }))
         // The old option name is ignored by Sentry 11 and must not be relied on.
-        expect(sentry.init.mock.calls[0][0]).not.toHaveProperty('sendDefaultPii')
+        expect(vi.mocked(sentry.init).mock.calls[0]?.[0]).not.toHaveProperty('sendDefaultPii')
     })
 
     it('reports errors and tags the user by ID only', async () => {

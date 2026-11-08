@@ -33,8 +33,9 @@ npm run dev
 
 ## TypeScript
 
-The app is written in TypeScript and checked strictly (`npm run typecheck`,
-also run in CI). Tests are still JavaScript; `allowJs` lets both coexist.
+The app and its tests are written in TypeScript and checked strictly
+(`npm run typecheck`, also run in CI). Typed test data builders live in
+`src/test/fixtures.ts`.
 
 Database types in `src/types/database.ts` are generated from the live schema.
 After changing the database, regenerate them:

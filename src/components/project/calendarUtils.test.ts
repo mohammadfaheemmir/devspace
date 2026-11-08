@@ -23,8 +23,8 @@ describe('getMonthGrid', () => {
         const inMonth = getMonthGrid(2026, 1).filter((day) => day.inMonth) // Feb 2026
 
         expect(inMonth).toHaveLength(28)
-        expect(inMonth[0].key).toBe('2026-02-01')
-        expect(inMonth[27].key).toBe('2026-02-28')
+        expect(inMonth[0]?.key).toBe('2026-02-01')
+        expect(inMonth[27]?.key).toBe('2026-02-28')
     })
 
     it('handles leap years', () => {
@@ -49,7 +49,7 @@ describe('groupTasksByDueDate', () => {
         const groups = groupTasksByDueDate(tasks)
 
         expect(Object.keys(groups).sort()).toEqual(['2026-11-10', '2026-11-12'])
-        expect(groups['2026-11-10'].map((task) => task.id)).toEqual(['a', 'c'])
+        expect(groups['2026-11-10']?.map((task) => task.id)).toEqual(['a', 'c'])
     })
 })
 

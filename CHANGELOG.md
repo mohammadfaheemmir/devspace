@@ -43,8 +43,10 @@ reviewed and approved before being applied to the live project.
 
 ### Testing
 
-- 151 tests (from 102), including accessibility audits of the calendar,
+- 152 tests (from 102), including accessibility audits of the calendar,
   label manager and attachments section.
+- The tests are now TypeScript too, with typed test data builders
+  (`src/test/fixtures.ts`); `allowJs` is off, so all of `src` is checked.
 
 ## 2026-11-08
 

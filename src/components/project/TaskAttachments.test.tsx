@@ -38,7 +38,7 @@ beforeEach(() => {
 
 describe('TaskAttachments', () => {
     it('lists files with sizes and offers delete only on your own files', async () => {
-        getTaskAttachments.mockResolvedValue([mine, theirs])
+        vi.mocked(getTaskAttachments).mockResolvedValue([mine, theirs])
         renderSection()
 
         expect(await screen.findByText('spec.pdf')).toBeInTheDocument()
@@ -49,14 +49,14 @@ describe('TaskAttachments', () => {
     })
 
     it('lets the task creator delete files others attached', async () => {
-        getTaskAttachments.mockResolvedValue([theirs])
+        vi.mocked(getTaskAttachments).mockResolvedValue([theirs])
         renderSection({ taskCreatedBy: 'me' })
 
         expect(await screen.findByRole('button', { name: 'Delete photo.png' })).toBeInTheDocument()
     })
 
     it('lets admins delete anyone\'s files', async () => {
-        getTaskAttachments.mockResolvedValue([theirs])
+        vi.mocked(getTaskAttachments).mockResolvedValue([theirs])
         renderSection({ isProjectAdmin: true })
 
         expect(await screen.findByRole('button', { name: 'Delete photo.png' })).toBeInTheDocument()
@@ -64,8 +64,8 @@ describe('TaskAttachments', () => {
 
     it('uploads valid files and reports invalid ones without uploading them', async () => {
         const user = userEvent.setup({ applyAccept: false })
-        getTaskAttachments.mockResolvedValue([])
-        uploadAttachment.mockResolvedValue(mine)
+        vi.mocked(getTaskAttachments).mockResolvedValue([])
+        vi.mocked(uploadAttachment).mockResolvedValue(mine)
         const { onError } = renderSection()
         await screen.findByText(/No files yet/)
 
@@ -81,8 +81,8 @@ describe('TaskAttachments', () => {
 
     it('deletes after confirmation', async () => {
         const user = userEvent.setup()
-        getTaskAttachments.mockResolvedValue([mine])
-        deleteAttachment.mockResolvedValue(true)
+        vi.mocked(getTaskAttachments).mockResolvedValue([mine])
+        vi.mocked(deleteAttachment).mockResolvedValue(true)
         vi.spyOn(window, 'confirm').mockReturnValue(true)
         renderSection()
 
@@ -93,7 +93,7 @@ describe('TaskAttachments', () => {
     })
 
     it('has no detectable accessibility violations', async () => {
-        getTaskAttachments.mockResolvedValue([mine])
+        vi.mocked(getTaskAttachments).mockResolvedValue([mine])
         const { container } = renderSection()
         await screen.findByText('spec.pdf')
 

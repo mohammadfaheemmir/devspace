@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactElement } from 'react'
+import { makeLabel, makeTask } from '../../test/fixtures'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import axe from 'axe-core'
@@ -24,10 +26,10 @@ const { default: TaskFormModal } = await import('./TaskFormModal')
 const { default: TaskFilters } = await import('./TaskFilters')
 const { DEFAULT_TASK_FILTERS } = await import('./taskUtils')
 
-const bug = { id: 'l-bug', project_id: 'p1', name: 'Bug', color: 'red', created_at: '2026-11-09T00:00:00Z' }
-const design = { id: 'l-design', project_id: 'p1', name: 'Design', color: 'purple', created_at: '2026-11-09T00:00:00Z' }
+const bug = makeLabel({ id: 'l-bug', name: 'Bug', color: 'red' })
+const design = makeLabel({ id: 'l-design', name: 'Design', color: 'purple' })
 
-const withToasts = (ui) => render(<ToastProvider>{ui}</ToastProvider>)
+const withToasts = (ui: ReactElement) => render(<ToastProvider>{ui}</ToastProvider>)
 
 beforeEach(() => {
     vi.clearAllMocks()
@@ -37,8 +39,8 @@ describe('LabelManager', () => {
     it('creates a label with the chosen colour and adds it in name order', async () => {
         const user = userEvent.setup()
         const onLabelsChange = vi.fn()
-        const feature = { ...bug, id: 'l-feature', name: 'Feature', color: 'teal' }
-        createLabel.mockResolvedValue(feature)
+        const feature = makeLabel({ id: 'l-feature', name: 'Feature', color: 'teal' })
+        vi.mocked(createLabel).mockResolvedValue(feature)
         withToasts(<LabelManager projectId="p1" labels={[bug, design]} onLabelsChange={onLabelsChange} onError={vi.fn()} />)
 
         await user.type(screen.getByLabelText('New label'), 'Feature')
@@ -53,7 +55,7 @@ describe('LabelManager', () => {
         const user = userEvent.setup()
         const onLabelsChange = vi.fn()
         const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
-        deleteLabel.mockResolvedValue(true)
+        vi.mocked(deleteLabel).mockResolvedValue(true)
         withToasts(<LabelManager projectId="p1" labels={[bug, design]} onLabelsChange={onLabelsChange} onError={vi.fn()} />)
 
         await user.click(screen.getByRole('button', { name: 'Delete label Bug' }))
@@ -67,7 +69,7 @@ describe('LabelManager', () => {
     it('reports errors such as duplicate names', async () => {
         const user = userEvent.setup()
         const onError = vi.fn()
-        createLabel.mockRejectedValue(new Error('A label called "Bug" already exists in this project.'))
+        vi.mocked(createLabel).mockRejectedValue(new Error('A label called "Bug" already exists in this project.'))
         withToasts(<LabelManager projectId="p1" labels={[bug]} onLabelsChange={vi.fn()} onError={onError} />)
 
         await user.type(screen.getByLabelText('New label'), 'bug')
@@ -85,7 +87,7 @@ describe('LabelManager', () => {
 })
 
 describe('TaskFormModal labels', () => {
-    const task = { id: 't1', title: 'Fix crash', description: null, priority: 'high', status: 'todo', assignee_id: null, due_date: null }
+    const task = makeTask({ id: 't1', title: 'Fix crash', priority: 'high' })
 
     function renderForm(extra = {}) {
         const handlers = { onSaved: vi.fn(), onClose: vi.fn(), onError: vi.fn(), onLabelsSaved: vi.fn() }
@@ -97,8 +99,8 @@ describe('TaskFormModal labels', () => {
 
     it('shows the current labels as selected and saves only the change', async () => {
         const user = userEvent.setup()
-        updateTask.mockResolvedValue(task)
-        setTaskLabels.mockResolvedValue(['l-bug', 'l-design'])
+        vi.mocked(updateTask).mockResolvedValue(task)
+        vi.mocked(setTaskLabels).mockResolvedValue(['l-bug', 'l-design'])
         const { onLabelsSaved } = renderForm()
 
         expect(screen.getByRole('button', { name: /Bug/ })).toHaveAttribute('aria-pressed', 'true')
@@ -113,7 +115,7 @@ describe('TaskFormModal labels', () => {
 
     it('does not touch labels when they did not change', async () => {
         const user = userEvent.setup()
-        updateTask.mockResolvedValue(task)
+        vi.mocked(updateTask).mockResolvedValue(task)
         renderForm()
 
         await user.type(screen.getByLabelText('Task title'), '!')
@@ -125,8 +127,8 @@ describe('TaskFormModal labels', () => {
 
     it('says the task was saved when only the labels failed', async () => {
         const user = userEvent.setup()
-        updateTask.mockResolvedValue(task)
-        setTaskLabels.mockRejectedValue(new Error(''))
+        vi.mocked(updateTask).mockResolvedValue(task)
+        vi.mocked(setTaskLabels).mockRejectedValue(new Error(''))
         const { onSaved, onError } = renderForm()
 
         await user.click(screen.getByRole('button', { name: /Design/ }))

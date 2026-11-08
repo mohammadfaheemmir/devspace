@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Task } from '../../types/app'
+import { makeTask } from '../../test/fixtures'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import axe from 'axe-core'
 import TaskCalendar from './TaskCalendar'
@@ -12,26 +14,15 @@ afterEach(() => {
     vi.useRealTimers()
 })
 
-function task(overrides) {
-    return {
-        id: overrides.id,
-        title: overrides.title ?? overrides.id,
-        description: null,
-        status: 'todo',
-        priority: 'medium',
-        assignee_id: null,
-        due_date: null,
-        created_at: '2026-11-01T00:00:00Z',
-        ...overrides,
-    }
-}
+const task = (overrides: Partial<Task> & { id: string }): Task =>
+    makeTask({ created_at: '2026-11-01T00:00:00Z', ...overrides })
 
-const longDate = (y, m, d) =>
+const longDate = (y: number, m: number, d: number) =>
     new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(y, m, d))
 
 // jsdom applies no CSS, so both the grid and the phone list are present.
 // Day groups (role="group") only exist in the grid.
-function dayCell(y, m, d) {
+function dayCell(y: number, m: number, d: number) {
     return screen.getByRole('group', { name: new RegExp(`^${longDate(y, m, d)},`) })
 }
 
@@ -102,7 +93,7 @@ describe('TaskCalendar', () => {
 
     it('moves between months and back to today', () => {
         render(<TaskCalendar tasks={[]} onEdit={vi.fn()} />)
-        const label = (y, m) => new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(y, m, 1))
+        const label = (y: number, m: number) => new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(y, m, 1))
 
         fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
         fireEvent.click(screen.getByRole('button', { name: 'Next month' }))

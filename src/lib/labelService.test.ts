@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createQuery } from '../test/supabaseMock'
+import { makeUser } from '../test/fixtures'
 
 vi.mock('./supabase', () => ({ supabase: { from: vi.fn() } }))
 vi.mock('./auth', () => ({ getCurrentUser: vi.fn() }))
@@ -15,13 +16,13 @@ const {
 
 beforeEach(() => {
     vi.clearAllMocks()
-    getCurrentUser.mockResolvedValue({ id: 'user-1' })
+    vi.mocked(getCurrentUser).mockResolvedValue(makeUser())
 })
 
 describe('createLabel', () => {
     it('trims the name and inserts it with its colour', async () => {
         const query = createQuery({ data: { id: 'l1', name: 'Bug', color: 'red' }, error: null })
-        supabase.from.mockReturnValue(query)
+        vi.mocked(supabase.from).mockReturnValue(query)
 
         await createLabel('p1', '  Bug ', 'red')
 
@@ -37,7 +38,7 @@ describe('createLabel', () => {
     })
 
     it('explains duplicate names', async () => {
-        supabase.from.mockReturnValue(createQuery({ data: null, error: { code: '23505', message: 'duplicate key' } }))
+        vi.mocked(supabase.from).mockReturnValue(createQuery({ data: null, error: { code: '23505', message: 'duplicate key' } }))
 
         await expect(createLabel('p1', 'Bug', 'red')).rejects.toThrow('A label called "Bug" already exists in this project.')
     })
@@ -45,7 +46,7 @@ describe('createLabel', () => {
 
 describe('deleteLabel', () => {
     it('reports when Row Level Security blocks the delete', async () => {
-        supabase.from.mockReturnValue(createQuery({ data: [], error: null }))
+        vi.mocked(supabase.from).mockReturnValue(createQuery({ data: [], error: null }))
 
         await expect(deleteLabel('l1')).rejects.toThrow(/may not have permission/)
     })
@@ -65,7 +66,7 @@ describe('setTaskLabels', () => {
     it('only adds new labels and removes dropped ones', async () => {
         const insertQuery = createQuery({ data: null, error: null })
         const deleteQuery = createQuery({ data: null, error: null })
-        supabase.from.mockReturnValueOnce(insertQuery).mockReturnValueOnce(deleteQuery)
+        vi.mocked(supabase.from).mockReturnValueOnce(insertQuery).mockReturnValueOnce(deleteQuery)
 
         const result = await setTaskLabels('t1', 'p1', ['keep', 'drop'], ['keep', 'add'])
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { makeAuth, makeUser } from '../test/fixtures'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
@@ -8,7 +9,7 @@ const { useAuth } = await import('../context/useAuth')
 const { default: ProtectedRoute } = await import('./ProtectedRoute')
 const { default: PublicOnlyRoute } = await import('./PublicOnlyRoute')
 
-function renderAt(path) {
+function renderAt(path: string) {
     return render(
         <MemoryRouter initialEntries={[path]}>
             <Routes>
@@ -29,21 +30,21 @@ beforeEach(() => {
 
 describe('ProtectedRoute', () => {
     it('shows the page to signed-in users', () => {
-        useAuth.mockReturnValue({ user: { id: 'u1' }, loading: false })
+        vi.mocked(useAuth).mockReturnValue(makeAuth({ user: makeUser('u1') }))
         renderAt('/dashboard')
 
         expect(screen.getByText('Dashboard page')).toBeInTheDocument()
     })
 
     it('sends signed-out visitors to the login page', () => {
-        useAuth.mockReturnValue({ user: null, loading: false })
+        vi.mocked(useAuth).mockReturnValue(makeAuth())
         renderAt('/dashboard')
 
         expect(screen.getByText('Login page')).toBeInTheDocument()
     })
 
     it('waits while the session is loading', () => {
-        useAuth.mockReturnValue({ user: null, loading: true })
+        vi.mocked(useAuth).mockReturnValue(makeAuth({ loading: true }))
         renderAt('/dashboard')
 
         expect(screen.getByText('Loading your workspace...')).toBeInTheDocument()
@@ -53,14 +54,14 @@ describe('ProtectedRoute', () => {
 
 describe('PublicOnlyRoute', () => {
     it('shows the login page to signed-out visitors', () => {
-        useAuth.mockReturnValue({ user: null, loading: false })
+        vi.mocked(useAuth).mockReturnValue(makeAuth())
         renderAt('/login')
 
         expect(screen.getByText('Login page')).toBeInTheDocument()
     })
 
     it('sends signed-in users to the dashboard', () => {
-        useAuth.mockReturnValue({ user: { id: 'u1' }, loading: false })
+        vi.mocked(useAuth).mockReturnValue(makeAuth({ user: makeUser('u1') }))
         renderAt('/login')
 
         expect(screen.getByText('Dashboard page')).toBeInTheDocument()

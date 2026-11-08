@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { Task } from '../../types/app'
+import type { TaskFilters } from './taskUtils'
+import { makeTask } from '../../test/fixtures'
 import {
     DEFAULT_TASK_FILTERS,
     filterAndSortTasks,
@@ -9,19 +12,7 @@ import {
     isTaskOverdue,
 } from './taskUtils'
 
-function task(overrides) {
-    return {
-        id: overrides.id,
-        title: '',
-        description: null,
-        status: 'todo',
-        priority: 'medium',
-        assignee_id: null,
-        due_date: null,
-        created_at: '2026-01-01T00:00:00Z',
-        ...overrides,
-    }
-}
+const task = (overrides: Partial<Task> & { id: string }): Task => makeTask(overrides)
 
 describe('getLocalDateString', () => {
     it('returns the local date as YYYY-MM-DD with zero padding', () => {
@@ -94,8 +85,8 @@ describe('filterAndSortTasks', () => {
         task({ id: 'c', title: 'Fix bug', priority: 'medium', status: 'in_progress', assignee_id: 'u2', due_date: '2026-02-01', created_at: '2026-01-02T00:00:00Z' }),
     ]
 
-    const ids = (list) => list.map((item) => item.id)
-    const run = (overrides) => ids(filterAndSortTasks(tasks, { ...DEFAULT_TASK_FILTERS, ...overrides }))
+    const ids = (list: { id: string }[]) => list.map((item) => item.id)
+    const run = (overrides: Partial<TaskFilters>) => ids(filterAndSortTasks(tasks, { ...DEFAULT_TASK_FILTERS, ...overrides }))
 
     it('returns all tasks, newest first, with the default filters', () => {
         expect(run({})).toEqual(['b', 'c', 'a'])

@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
+import { makeMember, partial } from '../../test/fixtures'
 import { fireEvent, render, screen } from '@testing-library/react'
 import TaskFilters from './TaskFilters'
 import { DEFAULT_TASK_FILTERS } from './taskUtils'
 
 const members = [
-    { user_id: 'u1', full_name: 'Ada' },
-    { user_id: 'u2', full_name: null },
+    makeMember({ user_id: 'u1', full_name: 'Ada' }),
+    // full_name is null on purpose: the filter must fall back to 'Unnamed member'.
+    makeMember({ user_id: 'u2', full_name: partial<string>(null as never) }),
 ]
 
 function renderFilters(props = {}) {
@@ -50,7 +52,7 @@ describe('TaskFilters', () => {
         fireEvent.change(screen.getByLabelText('Filter by assignee'), { target: { value: 'u1' } })
         fireEvent.change(screen.getByLabelText('Sort tasks'), { target: { value: 'due_date' } })
 
-        expect(onChange.mock.calls.map(([filters]) => filters)).toEqual([
+        expect(vi.mocked(onChange).mock.calls.map(([filters]) => filters)).toEqual([
             { ...DEFAULT_TASK_FILTERS, status: 'done' },
             { ...DEFAULT_TASK_FILTERS, priority: 'high' },
             { ...DEFAULT_TASK_FILTERS, assignee: 'u1' },

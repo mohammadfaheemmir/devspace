@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createQuery } from '../test/supabaseMock'
+import { makeUser } from '../test/fixtures'
 
 vi.mock('./supabase', () => ({ supabase: { from: vi.fn() } }))
 vi.mock('./auth', () => ({ getCurrentUser: vi.fn() }))
@@ -10,13 +11,13 @@ const { createTask, deleteTask, updateTask, updateTaskStatus } = await import('.
 
 beforeEach(() => {
     vi.clearAllMocks()
-    getCurrentUser.mockResolvedValue({ id: 'user-1' })
+    vi.mocked(getCurrentUser).mockResolvedValue(makeUser())
 })
 
 describe('createTask', () => {
     it('trims input, sets defaults and records the creator', async () => {
         const query = createQuery({ data: { id: 't1' }, error: null })
-        supabase.from.mockReturnValue(query)
+        vi.mocked(supabase.from).mockReturnValue(query)
 
         const result = await createTask('project-1', {
             title: '  Write tests  ',
@@ -59,7 +60,7 @@ describe('updateTaskStatus', () => {
 describe('updateTask', () => {
     it('updates only the editable fields of the given task', async () => {
         const query = createQuery({ data: { id: 't1', title: 'New' }, error: null })
-        supabase.from.mockReturnValue(query)
+        vi.mocked(supabase.from).mockReturnValue(query)
 
         await updateTask('t1', {
             title: ' New ',
@@ -67,7 +68,9 @@ describe('updateTask', () => {
             priority: 'high',
             assignee_id: 'user-2',
             due_date: '2026-12-01',
-            // Fields that must never be sent from the edit form:
+            // Fields that must never be sent from the edit form (sent on
+            // purpose here, to check the service drops them):
+            // @ts-expect-error -- not part of TaskInput
             created_by: 'someone-else',
             project_id: 'other-project',
         })
@@ -83,13 +86,13 @@ describe('updateTask', () => {
     })
 
     it('explains when Row Level Security blocks the update (no row returned)', async () => {
-        supabase.from.mockReturnValue(createQuery({ data: null, error: null }))
+        vi.mocked(supabase.from).mockReturnValue(createQuery({ data: null, error: null }))
 
         await expect(updateTask('t1', { title: 'New' })).rejects.toThrow(/may not have permission/)
     })
 
     it('passes database errors through', async () => {
-        supabase.from.mockReturnValue(createQuery({ data: null, error: { message: 'boom' } }))
+        vi.mocked(supabase.from).mockReturnValue(createQuery({ data: null, error: { message: 'boom' } }))
 
         await expect(updateTask('t1', { title: 'New' })).rejects.toThrow('boom')
     })
@@ -98,7 +101,7 @@ describe('updateTask', () => {
 describe('deleteTask', () => {
     it('deletes the task by ID', async () => {
         const query = createQuery({ data: [{ id: 't1' }], error: null })
-        supabase.from.mockReturnValue(query)
+        vi.mocked(supabase.from).mockReturnValue(query)
 
         await expect(deleteTask('t1')).resolves.toBe(true)
         expect(query.delete).toHaveBeenCalled()
@@ -106,7 +109,7 @@ describe('deleteTask', () => {
     })
 
     it('explains when nothing was deleted', async () => {
-        supabase.from.mockReturnValue(createQuery({ data: [], error: null }))
+        vi.mocked(supabase.from).mockReturnValue(createQuery({ data: [], error: null }))
 
         await expect(deleteTask('t1')).rejects.toThrow(/may not have permission/)
     })

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Notification } from '../types/app'
+import type { NotificationsApi } from '../hooks/useNotifications'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -9,14 +11,14 @@ vi.mock('../hooks/useNotifications', () => ({ useNotifications: vi.fn() }))
 const { useNotifications } = await import('../hooks/useNotifications')
 const { default: Notifications } = await import('./Notifications')
 
-const notifications = [
-    { id: 'n1', type: 'task_assigned', title: 'New task assigned to you', message: 'Fix login', project_id: 'p1', is_read: false, created_at: '2026-01-03T10:00:00Z' },
-    { id: 'n2', type: 'project_invitation', title: 'Project invitation', message: 'Join Apollo', project_id: 'p2', is_read: false, created_at: '2026-01-02T10:00:00Z' },
-    { id: 'n3', type: 'new_comment', title: 'New comment on your task', message: 'Someone commented', project_id: 'p1', is_read: true, created_at: '2026-01-01T10:00:00Z' },
+const notifications: Notification[] = [
+    { user_id: 'me', actor_id: null, task_id: null, id: 'n1', type: 'task_assigned', title: 'New task assigned to you', message: 'Fix login', project_id: 'p1', is_read: false, created_at: '2026-01-03T10:00:00Z' },
+    { user_id: 'me', actor_id: null, task_id: null, id: 'n2', type: 'project_invitation', title: 'Project invitation', message: 'Join Apollo', project_id: 'p2', is_read: false, created_at: '2026-01-02T10:00:00Z' },
+    { user_id: 'me', actor_id: null, task_id: null, id: 'n3', type: 'new_comment', title: 'New comment on your task', message: 'Someone commented', project_id: 'p1', is_read: true, created_at: '2026-01-01T10:00:00Z' },
 ]
 
-function mockHook(overrides = {}) {
-    const hook = {
+function mockHook(overrides: Partial<NotificationsApi> = {}) {
+    const hook: NotificationsApi = {
         notifications,
         unreadCount: 2,
         loading: false,
@@ -26,7 +28,7 @@ function mockHook(overrides = {}) {
         markAllAsRead: vi.fn(),
         ...overrides,
     }
-    useNotifications.mockReturnValue(hook)
+    vi.mocked(useNotifications).mockReturnValue(hook)
     return hook
 }
 
@@ -112,7 +114,7 @@ describe('Notifications page', () => {
 
     it('shows an empty state when everything is read', async () => {
         const user = userEvent.setup()
-        mockHook({ notifications: [notifications[2]], unreadCount: 0 })
+        mockHook({ notifications: notifications.slice(2, 3), unreadCount: 0 })
         renderPage()
 
         expect(screen.getByText('You are all caught up.')).toBeInTheDocument()

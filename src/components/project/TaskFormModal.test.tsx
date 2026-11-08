@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { makeMember, makeTask } from '../../test/fixtures'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -18,18 +19,18 @@ const { ToastProvider } = await import('../../context/ToastContext')
 const { default: TaskFormModal } = await import('./TaskFormModal')
 
 const members = [
-    { user_id: 'u1', full_name: 'Ada' },
-    { user_id: 'u2', full_name: 'Grace' },
+    makeMember({ user_id: 'u1', full_name: 'Ada' }),
+    makeMember({ user_id: 'u2', full_name: 'Grace' }),
 ]
 
-const existingTask = {
+const existingTask = makeTask({
     id: 't1',
     title: 'Fix login bug',
     description: 'Users get stuck',
     priority: 'high',
     assignee_id: 'u2',
     due_date: '2026-01-15',
-}
+})
 
 function renderModal(props = {}) {
     const handlers = {
@@ -55,7 +56,8 @@ beforeEach(() => {
 describe('TaskFormModal - create mode', () => {
     it('creates a task with the entered values', async () => {
         const user = userEvent.setup()
-        createTask.mockResolvedValue({ id: 'new', title: 'Write docs' })
+        const created = makeTask({ id: 'new', title: 'Write docs' })
+        vi.mocked(createTask).mockResolvedValue(created)
         const { onSaved, onClose } = renderModal()
 
         await user.type(screen.getByLabelText('Task title'), 'Write docs')
@@ -63,7 +65,7 @@ describe('TaskFormModal - create mode', () => {
         await user.selectOptions(screen.getByLabelText('Assign to'), 'u1')
         await user.click(screen.getByRole('button', { name: 'Create Task' }))
 
-        await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ id: 'new', title: 'Write docs' }))
+        await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created))
         expect(createTask).toHaveBeenCalledWith('p1', {
             title: 'Write docs',
             description: '',
@@ -83,7 +85,7 @@ describe('TaskFormModal - create mode', () => {
 
     it('reports errors and stays open', async () => {
         const user = userEvent.setup()
-        createTask.mockRejectedValue(new Error('No permission'))
+        vi.mocked(createTask).mockRejectedValue(new Error('No permission'))
         const { onError, onClose } = renderModal()
 
         await user.type(screen.getByLabelText('Task title'), 'Write docs')
@@ -128,7 +130,7 @@ describe('TaskFormModal - edit mode', () => {
 
     it('saves changes through updateTask', async () => {
         const user = userEvent.setup()
-        updateTask.mockResolvedValue({ ...existingTask, title: 'Fix login bug now' })
+        vi.mocked(updateTask).mockResolvedValue({ ...existingTask, title: 'Fix login bug now' })
         const { onSaved } = renderModal({ task: existingTask })
 
         await user.type(screen.getByLabelText('Task title'), ' now')
@@ -148,7 +150,7 @@ describe('TaskFormModal - edit mode', () => {
     it('deletes after confirmation', async () => {
         const user = userEvent.setup()
         vi.spyOn(window, 'confirm').mockReturnValue(true)
-        deleteTask.mockResolvedValue(true)
+        vi.mocked(deleteTask).mockResolvedValue(true)
         const { onDeleted, onClose } = renderModal({ task: existingTask, canDelete: true })
 
         await user.click(screen.getByRole('button', { name: /delete task/i }))

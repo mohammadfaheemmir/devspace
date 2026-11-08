@@ -1,7 +1,7 @@
 {
-  // Type-checking only: Vite compiles the code. JavaScript and TypeScript
-  // files live side by side during the gradual conversion. Only .ts/.tsx
-  // files are checked (checkJs is off), strictly.
+  // Type-checking only: Vite compiles the code. Everything in src (app and
+  // tests) is TypeScript and checked strictly; allowJs is off so new .js
+  // files are not silently accepted.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -10,8 +10,7 @@
     "jsx": "react-jsx",
     "types": ["vite/client"],
 
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "noEmit": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": true,

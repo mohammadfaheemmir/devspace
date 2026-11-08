@@ -22,7 +22,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.js'],
+    setupFiles: ['./src/test/setup.ts'],
     // Dummy values so modules that create the Supabase client can load.
     // Tests never talk to a real project; services are mocked per test.
     env: {

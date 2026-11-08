@@ -2,6 +2,8 @@
 // Colour contrast cannot be computed in jsdom (no layout/CSS), so that rule is
 // off here; contrast was checked separately against the WCAG formula.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactElement } from 'react'
+import { makeMember, makeTask } from './fixtures'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import axe from 'axe-core'
@@ -31,7 +33,7 @@ const { default: TaskFilters } = await import('../components/project/TaskFilters
 const { default: TaskComments } = await import('../components/project/TaskComments')
 const { DEFAULT_TASK_FILTERS } = await import('../components/project/taskUtils')
 
-async function expectNoViolations(ui) {
+async function expectNoViolations(ui: ReactElement) {
     const { container } = render(
         <MemoryRouter>
             <ToastProvider>{ui}</ToastProvider>
@@ -52,14 +54,14 @@ async function expectNoViolations(ui) {
 }
 
 const members = [
-    { user_id: 'me', full_name: 'Me', role: 'owner' },
-    { user_id: 'u2', full_name: 'Grace', role: 'member' },
+    makeMember({ user_id: 'me', full_name: 'Me', role: 'owner' }),
+    makeMember({ user_id: 'u2', full_name: 'Grace', role: 'member' }),
 ]
 
 beforeEach(() => {
-    useNotifications.mockReturnValue({
+    vi.mocked(useNotifications).mockReturnValue({
         notifications: [
-            { id: 'n1', type: 'task_assigned', title: 'New task assigned to you', message: 'Fix login', project_id: 'p1', is_read: false, created_at: '2026-01-01T10:00:00Z' },
+            { user_id: 'me', actor_id: null, task_id: null, id: 'n1', type: 'task_assigned', title: 'New task assigned to you', message: 'Fix login', project_id: 'p1', is_read: false, created_at: '2026-01-01T10:00:00Z' },
         ],
         unreadCount: 1,
         loading: false,
@@ -110,7 +112,7 @@ describe('accessibility (axe-core)', () => {
             <TaskFormModal
                 projectId="p1"
                 members={members}
-                task={{ id: 't1', title: 'Fix bug', priority: 'high', due_date: '2026-01-01' }}
+                task={makeTask({ id: 't1', title: 'Fix bug', priority: 'high', due_date: '2026-01-01' })}
                 canDelete
                 onSaved={vi.fn()}
                 onDeleted={vi.fn()}
@@ -134,14 +136,19 @@ describe('accessibility (axe-core)', () => {
                 isProjectAdmin={false}
                 comments={{
                     expandedTaskId: 't1',
-                    commentsByTask: { t1: [{ id: 'c1', author_id: 'me', author_name: 'Me', content: 'Hi', created_at: '2026-01-01T10:00:00Z' }] },
+                    commentsByTask: { t1: [{ id: 'c1', task_id: 't1', project_id: 'p1', author_id: 'me', author_name: 'Me', author_avatar: null, content: 'Hi', created_at: '2026-01-01T10:00:00Z' }] },
                     drafts: {},
+                    loadingTaskId: null,
+                    sendingTaskId: null,
+                    deletingCommentId: null,
+                    savingCommentId: null,
                     hasLoaded: () => true,
                     toggle: vi.fn(),
                     setDraft: vi.fn(),
                     submit: vi.fn(),
                     edit: vi.fn(),
                     remove: vi.fn(),
+                    forgetTask: vi.fn(),
                 }}
             />
         )

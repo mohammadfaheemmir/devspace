@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useDismiss } from './useDismiss'
 
-function Menu({ isOpen, onClose }) {
+function Menu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const ref = useRef(null)
     useDismiss(ref, isOpen, onClose)
 

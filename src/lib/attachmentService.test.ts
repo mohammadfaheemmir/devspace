@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createQuery } from '../test/supabaseMock'
+import { fakeFile, makeUser } from '../test/fixtures'
 
 const bucket = {
     upload: vi.fn(),
@@ -25,26 +26,32 @@ const {
     validateAttachment,
 } = await import('./attachmentService')
 
-const pdf = (overrides = {}) => ({ name: 'Spec v2.pdf', size: 2048, type: 'application/pdf', ...overrides })
+type FileFields = { name: string; size: number; type: string }
+const pdfFields = (overrides: Partial<FileFields> = {}): FileFields =>
+    ({ name: 'Spec v2.pdf', size: 2048, type: 'application/pdf', ...overrides })
+const pdf = (overrides: Partial<FileFields> = {}): File => {
+    const { name, type, size } = pdfFields(overrides)
+    return fakeFile(name, type, size)
+}
 
 beforeEach(() => {
     vi.clearAllMocks()
-    getCurrentUser.mockResolvedValue({ id: 'user-1' })
-    bucket.upload.mockResolvedValue({ data: {}, error: null })
-    bucket.remove.mockResolvedValue({ data: [], error: null })
+    vi.mocked(getCurrentUser).mockResolvedValue(makeUser())
+    vi.mocked(bucket.upload).mockResolvedValue({ data: {}, error: null })
+    vi.mocked(bucket.remove).mockResolvedValue({ data: [], error: null })
 })
 
 describe('validateAttachment', () => {
     it('accepts supported files up to 10 MB', () => {
-        expect(validateAttachment(pdf())).toBeNull()
-        expect(validateAttachment(pdf({ size: 10 * 1024 * 1024 }))).toBeNull()
+        expect(validateAttachment(pdfFields())).toBeNull()
+        expect(validateAttachment(pdfFields({ size: 10 * 1024 * 1024 }))).toBeNull()
     })
 
     it('rejects empty, oversized and unsupported files', () => {
-        expect(validateAttachment(pdf({ size: 0 }))).toMatch(/is empty/)
-        expect(validateAttachment(pdf({ size: 10 * 1024 * 1024 + 1 }))).toMatch(/larger than 10 MB/)
-        expect(validateAttachment(pdf({ name: 'page.html', type: 'text/html' }))).toMatch(/not a supported file type/)
-        expect(validateAttachment(pdf({ name: 'logo.svg', type: 'image/svg+xml' }))).toMatch(/not a supported file type/)
+        expect(validateAttachment(pdfFields({ size: 0 }))).toMatch(/is empty/)
+        expect(validateAttachment(pdfFields({ size: 10 * 1024 * 1024 + 1 }))).toMatch(/larger than 10 MB/)
+        expect(validateAttachment(pdfFields({ name: 'page.html', type: 'text/html' }))).toMatch(/not a supported file type/)
+        expect(validateAttachment(pdfFields({ name: 'logo.svg', type: 'image/svg+xml' }))).toMatch(/not a supported file type/)
     })
 })
 
@@ -67,11 +74,11 @@ describe('formatFileSize', () => {
 describe('uploadAttachment', () => {
     it('uploads under project/task/random-name and records the original name', async () => {
         const insert = createQuery({ data: { id: 'a1' }, error: null })
-        supabase.from.mockReturnValue(insert)
+        vi.mocked(supabase.from).mockReturnValue(insert)
 
         await uploadAttachment('p1', 't1', pdf())
 
-        const [path, , options] = bucket.upload.mock.calls[0]
+        const [path, , options] = vi.mocked(bucket.upload).mock.calls[0] ?? []
         expect(path).toMatch(/^p1\/t1\/[0-9a-f-]{36}-Spec_v2.pdf$/)
         expect(options).toEqual({ contentType: 'application/pdf', upsert: false })
         expect(insert.insert).toHaveBeenCalledWith(expect.objectContaining({
@@ -85,11 +92,11 @@ describe('uploadAttachment', () => {
     })
 
     it('removes the uploaded file again if recording it fails', async () => {
-        supabase.from.mockReturnValue(createQuery({ data: null, error: { message: 'denied' } }))
+        vi.mocked(supabase.from).mockReturnValue(createQuery({ data: null, error: { message: 'denied' } }))
 
         await expect(uploadAttachment('p1', 't1', pdf())).rejects.toThrow('denied')
 
-        const uploadedPath = bucket.upload.mock.calls[0][0]
+        const uploadedPath = vi.mocked(bucket.upload).mock.calls[0]?.[0]
         expect(bucket.remove).toHaveBeenCalledWith([uploadedPath])
     })
 
@@ -101,7 +108,7 @@ describe('uploadAttachment', () => {
 
 describe('getAttachmentDownloadUrl', () => {
     it('creates a 60-second link that downloads under the original name', async () => {
-        bucket.createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://signed' }, error: null })
+        vi.mocked(bucket.createSignedUrl).mockResolvedValue({ data: { signedUrl: 'https://signed' }, error: null })
 
         await expect(getAttachmentDownloadUrl({ storage_path: 'p1/t1/x-a.pdf', file_name: 'a.pdf' })).resolves.toBe('https://signed')
         expect(bucket.createSignedUrl).toHaveBeenCalledWith('p1/t1/x-a.pdf', 60, { download: 'a.pdf' })
@@ -110,7 +117,7 @@ describe('getAttachmentDownloadUrl', () => {
 
 describe('deleteAttachment', () => {
     it('deletes the record first, then the file', async () => {
-        supabase.from.mockReturnValue(createQuery({ data: [{ id: 'a1' }], error: null }))
+        vi.mocked(supabase.from).mockReturnValue(createQuery({ data: [{ id: 'a1' }], error: null }))
 
         await deleteAttachment({ id: 'a1', storage_path: 'p1/t1/x-a.pdf' })
 
@@ -118,7 +125,7 @@ describe('deleteAttachment', () => {
     })
 
     it('keeps the file when the database refuses the delete', async () => {
-        supabase.from.mockReturnValue(createQuery({ data: [], error: null }))
+        vi.mocked(supabase.from).mockReturnValue(createQuery({ data: [], error: null }))
 
         await expect(deleteAttachment({ id: 'a1', storage_path: 'p1/t1/x-a.pdf' })).rejects.toThrow(/Only the uploader or a project admin/)
         expect(bucket.remove).not.toHaveBeenCalled()
@@ -127,7 +134,7 @@ describe('deleteAttachment', () => {
 
 describe('removeProjectFiles', () => {
     it('removes the files in every task folder of the project', async () => {
-        bucket.list.mockImplementation(async (prefix) => {
+        vi.mocked(bucket.list).mockImplementation(async (prefix) => {
             if (prefix === 'p1') return { data: [{ id: null, name: 't1' }, { id: null, name: 't2' }], error: null }
             if (prefix === 'p1/t1') return { data: [{ id: 'f1', name: 'a.pdf' }], error: null }
             if (prefix === 'p1/t2') return { data: [{ id: 'f2', name: 'b.png' }, { id: 'f3', name: 'c.txt' }], error: null }
