@@ -9,12 +9,12 @@ import {
     CalendarDays,
     LogOut,
     X,
-    ArrowUpRight,
     Mail,
     Check,
     Clock,
     Bell,
     CheckCheck,
+    Search,
 } from 'lucide-react'
 
 import { useAuth } from '../context/useAuth'
@@ -22,7 +22,10 @@ import { useAuth } from '../context/useAuth'
 import {
     getProjects,
     createProject,
+    getProjectSummaries,
 } from '../lib/projectService'
+
+import ProjectCard from '../components/dashboard/ProjectCard'
 
 import {
     getMyInvitations,
@@ -63,6 +66,9 @@ function Dashboard() {
     const [profile, setProfile] = useState(null)
 
     const [projects, setProjects] = useState([])
+    // Per-project role and task counts, keyed by project ID.
+    const [projectSummaries, setProjectSummaries] = useState({})
+    const [projectSearch, setProjectSearch] = useState('')
     const [invitations, setInvitations] = useState([])
 
     const [loading, setLoading] = useState(true)
@@ -148,6 +154,17 @@ function Dashboard() {
             try {
                 const data = await getProjects()
                 setProjects(data)
+
+                // Role and task counts are extras: if they fail to load,
+                // the cards simply show without them.
+                try {
+                    const summaries = await getProjectSummaries(
+                        data.map((project) => project.id)
+                    )
+                    setProjectSummaries(summaries)
+                } catch (summaryError) {
+                    console.error('Loading project summaries failed:', summaryError)
+                }
             } catch (err) {
                 console.error('Loading projects failed:', err)
                 setError(err.message || 'Unable to load projects.')
@@ -311,6 +328,11 @@ function Dashboard() {
                 ...previous,
             ])
 
+            setProjectSummaries((previous) => ({
+                ...previous,
+                [newProject.id]: { role: 'owner', total: 0, done: 0, inProgress: 0 },
+            }))
+
             setProjectName('')
             setDescription('')
             setCreating(false)
@@ -416,6 +438,16 @@ function Dashboard() {
 
         navigate('/login', { replace: true })
     }
+
+    // Projects matching the search box (name or description).
+    const searchTerm = projectSearch.trim().toLowerCase()
+    const filteredProjects = searchTerm
+        ? projects.filter((project) =>
+            `${project.name} ${project.description || ''}`
+                .toLowerCase()
+                .includes(searchTerm)
+        )
+        : projects
 
     // Open project workspace
     const openProject = (projectId) => {
@@ -847,9 +879,28 @@ function Dashboard() {
                 {/* Projects section */}
                 <section className="mt-12">
 
-                    <h3 className="mb-6 text-xl font-semibold">
-                        Your Projects
-                    </h3>
+                    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 className="text-xl font-semibold">
+                            Your Projects
+                        </h3>
+
+                        {projects.length > 0 && (
+                            <label className="relative block w-full sm:w-72">
+                                <Search
+                                    size={16}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                                />
+                                <input
+                                    type="search"
+                                    value={projectSearch}
+                                    onChange={(e) => setProjectSearch(e.target.value)}
+                                    placeholder="Search projects..."
+                                    aria-label="Search projects"
+                                    className="w-full rounded-lg border border-slate-700 bg-slate-900 py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+                                />
+                            </label>
+                        )}
+                    </div>
 
                     {loading ? (
 
@@ -886,62 +937,33 @@ function Dashboard() {
 
                         </div>
 
+                    ) : filteredProjects.length === 0 ? (
+
+                        <div className="rounded-xl border border-dashed border-slate-700 p-10 text-center">
+                            <Search size={30} className="mx-auto text-slate-500" />
+                            <p className="mt-3 font-medium text-slate-300">
+                                No projects match "{projectSearch.trim()}"
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setProjectSearch('')}
+                                className="mt-3 text-sm font-medium text-indigo-400 hover:text-indigo-300"
+                            >
+                                Clear search
+                            </button>
+                        </div>
+
                     ) : (
 
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
-                            {projects.map((project) => (
-
-                                <button
+                            {filteredProjects.map((project) => (
+                                <ProjectCard
                                     key={project.id}
-                                    type="button"
-                                    onClick={() => openProject(project.id)}
-                                    className="w-full rounded-xl border border-slate-800 bg-slate-900 p-6 text-left transition hover:-translate-y-1 hover:border-indigo-500/60 hover:bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
-
-                                    <div className="flex items-center justify-between">
-
-                                        <div className="rounded-lg bg-indigo-500/10 p-3 text-indigo-400">
-                                            <FolderKanban size={22} />
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-
-                                            <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs text-indigo-400">
-                                                Project
-                                            </span>
-
-                                            <ArrowUpRight
-                                                size={17}
-                                                className="text-slate-500"
-                                            />
-
-                                        </div>
-                                    </div>
-
-                                    <h4 className="mt-5 text-lg font-semibold">
-                                        {project.name}
-                                    </h4>
-
-                                    <p className="mt-2 min-h-12 text-sm text-slate-400">
-                                        {project.description || 'No description provided.'}
-                                    </p>
-
-                                    <div className="mt-5 flex items-center gap-2 border-t border-slate-800 pt-4 text-xs text-slate-500">
-
-                                        <CalendarDays size={14} />
-
-                                        Created{' '}
-                                        {new Date(
-                                            project.created_at
-                                        ).toLocaleDateString()}
-
-                                    </div>
-
-                                </button>
-
+                                    project={project}
+                                    summary={projectSummaries[project.id]}
+                                    onOpen={() => openProject(project.id)}
+                                />
                             ))}
-
                         </div>
 
                     )}
