@@ -4,6 +4,22 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Put large libraries in their own files. They rarely change, so
+        // browsers keep them cached across deploys and only re-download the
+        // (much smaller) app code when it changes.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 30 },
+            { name: 'router', test: /node_modules[\\/](react-router|react-router-dom)[\\/]/, priority: 20 },
+            { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]/, priority: 10 },
+          ],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.js'],
