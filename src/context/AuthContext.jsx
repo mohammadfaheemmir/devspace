@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { AuthContext } from './useAuth'
+import { setMonitoringUser } from '../lib/monitoring'
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
@@ -54,6 +55,11 @@ export function AuthProvider({ children }) {
             subscription.unsubscribe()
         }
     }, [])
+
+    // Tag error reports with the signed-in user's ID (never their email).
+    useEffect(() => {
+        setMonitoringUser(user?.id ?? null)
+    }, [user?.id])
 
     // Register a new user
     const signup = async (fullName, email, password) => {

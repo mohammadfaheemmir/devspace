@@ -30,6 +30,18 @@ npm run dev
 | `npm test` | Run the test suite once (Vitest) |
 | `npm run test:watch` | Re-run tests on every change |
 
+## Error monitoring
+
+Optional, with [Sentry](https://sentry.io). Set `VITE_SENTRY_DSN` (in `.env`
+locally, and in Netlify under *Site configuration -> Environment variables*
+for the live site, then redeploy). Without it, monitoring is off and the Sentry
+SDK is not included in the build.
+
+When on, Sentry receives uncaught errors and React render crashes (the app
+shows a "Something went wrong" screen instead of a blank page). It sends no
+IP addresses, cookies or emails, only the signed-in user's ID, and no
+performance tracing. See `src/lib/monitoring.js`.
+
 ## Project structure
 
 ```
