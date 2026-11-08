@@ -33,9 +33,8 @@ npm run dev
 
 ## TypeScript
 
-The project is being converted to TypeScript gradually; `.js`/`.jsx` and
-`.ts`/`.tsx` files work side by side, and `.ts` files are checked strictly
-(`npm run typecheck`, also run in CI).
+The app is written in TypeScript and checked strictly (`npm run typecheck`,
+also run in CI). Tests are still JavaScript; `allowJs` lets both coexist.
 
 Database types in `src/types/database.ts` are generated from the live schema.
 After changing the database, regenerate them:
