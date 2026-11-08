@@ -10,6 +10,8 @@ import type { TaskInput } from '../../lib/taskService'
 import type { ProjectLabel, ProjectMember, Task } from '../../types/app'
 import { setTaskLabels } from '../../lib/labelService'
 import { LABEL_STYLES } from './labelStyles'
+import TaskAttachments from './TaskAttachments'
+import { removeTaskFiles } from '../../lib/attachmentService'
 
 type TaskForm = {
     title: string
@@ -35,6 +37,9 @@ type TaskFormModalProps = {
     initialLabelIds?: string[]
     /** Called with the task's new label IDs after they are saved. */
     onLabelsSaved?: (taskId: string, labelIds: string[]) => void
+    /** Used in edit mode to decide who may delete attachments. */
+    currentUserId?: string | null
+    isProjectAdmin?: boolean
 }
 
 const EMPTY_TASK_FORM: TaskForm = {
@@ -73,6 +78,8 @@ function TaskFormModal({
     labels = [],
     initialLabelIds = [],
     onLabelsSaved,
+    currentUserId = null,
+    isProjectAdmin = false,
 }: TaskFormModalProps) {
     const toast = useToast()
     const isEditing = Boolean(task)
@@ -154,6 +161,9 @@ function TaskFormModal({
             setDeleting(true)
             onError('')
 
+            // Supabase cannot delete files when the task's rows cascade away,
+            // so remove the task's files first (best effort).
+            await removeTaskFiles(projectId, task.id)
             await deleteTask(task.id)
 
             onDeleted?.(task.id)
@@ -263,6 +273,16 @@ function TaskFormModal({
                             </select>
                         </div>
                     </div>
+
+                    {task && (
+                        <TaskAttachments
+                            projectId={projectId}
+                            taskId={task.id}
+                            currentUserId={currentUserId}
+                            isProjectAdmin={isProjectAdmin}
+                            onError={onError}
+                        />
+                    )}
 
                     {labels.length > 0 && (
                             <fieldset>

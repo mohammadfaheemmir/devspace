@@ -862,6 +862,8 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                         onError={notifyError}
                         labels={labels}
                         initialLabelIds={labelIdsByTask[editingTask.id] ?? []}
+                        currentUserId={currentUserId}
+                        isProjectAdmin={isProjectAdmin}
                         onLabelsSaved={handleLabelsSaved}
                     />
                 )}

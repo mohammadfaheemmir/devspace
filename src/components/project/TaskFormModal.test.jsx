@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+vi.mock('../../lib/attachmentService', async (importOriginal) => ({
+    ...(await importOriginal()),
+    getTaskAttachments: vi.fn(async () => []),
+    removeTaskFiles: vi.fn(async () => {}),
+}))
 vi.mock('../../lib/taskService', () => ({
     createTask: vi.fn(),
     updateTask: vi.fn(),

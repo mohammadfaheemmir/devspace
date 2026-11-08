@@ -4,6 +4,7 @@ import type { Project } from '../../types/app'
 import { useNavigate } from 'react-router-dom'
 import { leaveProject } from '../../lib/projectMemberService'
 import { deleteProject } from '../../lib/projectService'
+import { removeProjectFiles } from '../../lib/attachmentService'
 import {
     Trash2,
 } from 'lucide-react'
@@ -37,6 +38,9 @@ function ProjectDangerZone({ project, projectId, isProjectOwner, onError }: Proj
         try {
             setDeletingProject(true)
             onError('')
+            // Supabase cannot delete files when the project's rows cascade
+            // away, so remove its attachment files first (best effort).
+            await removeProjectFiles(projectId)
             await deleteProject(projectId)
             navigate('/dashboard', {
                 replace: true,

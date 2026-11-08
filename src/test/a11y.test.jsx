@@ -14,6 +14,11 @@ vi.mock('../context/useAuth', () => ({
     }),
 }))
 vi.mock('../hooks/useNotifications', () => ({ useNotifications: vi.fn() }))
+vi.mock('../lib/attachmentService', async (importOriginal) => ({
+    ...(await importOriginal()),
+    getTaskAttachments: vi.fn(async () => []),
+    removeTaskFiles: vi.fn(async () => {}),
+}))
 vi.mock('../lib/taskService', () => ({ createTask: vi.fn(), updateTask: vi.fn(), deleteTask: vi.fn() }))
 
 const { useNotifications } = await import('../hooks/useNotifications')
