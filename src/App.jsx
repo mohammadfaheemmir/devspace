@@ -1,11 +1,15 @@
 
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 
-import Login from './pages/Login'
-import Signup from './pages/Signup'
-import Dashboard from './pages/Dashboard'
-import ProjectDetails from './pages/ProjectDetails'
-import ProfileSettings from './pages/ProfileSettings'
+import { lazy, Suspense } from 'react'
+
+// Each page is loaded only when it is first visited, which keeps the
+// initial download small.
+const Login = lazy(() => import('./pages/Login'))
+const Signup = lazy(() => import('./pages/Signup'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const ProjectDetails = lazy(() => import('./pages/ProjectDetails'))
+const ProfileSettings = lazy(() => import('./pages/ProfileSettings'))
 
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicOnlyRoute from './components/PublicOnlyRoute'
@@ -17,36 +21,46 @@ function ProjectDetailsRoute() {
   return <ProjectDetails key={projectId} />
 }
 
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+      Loading...
+    </div>
+  )
+}
+
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public routes (signed-out visitors only) */}
-        <Route element={<PublicOnlyRoute />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-        </Route>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public routes (signed-out visitors only) */}
+          <Route element={<PublicOnlyRoute />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+          </Route>
 
-        {/* Protected routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route
-            path="/"
-            element={<Navigate to="/dashboard" replace />}
-          />
+          {/* Protected routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route
+              path="/"
+              element={<Navigate to="/dashboard" replace />}
+            />
 
-          <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
 
-          <Route path="/profile" element={<ProfileSettings />} />
+            <Route path="/profile" element={<ProfileSettings />} />
 
-          <Route
-            path="/projects/:projectId"
-            element={<ProjectDetailsRoute />}
-          />
-        </Route>
+            <Route
+              path="/projects/:projectId"
+              element={<ProjectDetailsRoute />}
+            />
+          </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }
