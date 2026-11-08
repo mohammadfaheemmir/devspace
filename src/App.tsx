@@ -19,7 +19,11 @@ import PublicOnlyRoute from './components/PublicOnlyRoute'
 // from one project carries over into another.
 function ProjectDetailsRoute() {
   const { projectId } = useParams()
-  return <ProjectDetails key={projectId} />
+
+  // The route pattern always includes an ID, but check rather than assume.
+  if (!projectId) return <Navigate to="/dashboard" replace />
+
+  return <ProjectDetails key={projectId} projectId={projectId} />
 }
 
 function PageLoader() {

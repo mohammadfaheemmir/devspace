@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 
@@ -14,7 +14,7 @@ function Signup() {
     const [message, setMessage] = useState('')
     const [loading, setLoading] = useState(false)
 
-    const handleSignup = async (e) => {
+    const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setError('')
         setMessage('')

@@ -1,6 +1,12 @@
 
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { getErrorMessage } from '../lib/errors'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import type { Tables } from '../types/database'
+import type { Project, ProjectMember, Task } from '../types/app'
+import type { ProjectInvitation } from '../lib/invitationService'
+import type { ProjectActivity } from '../lib/activityService'
+import { useNavigate } from 'react-router-dom'
 import {
     ArrowLeft,
     Plus,
@@ -43,16 +49,17 @@ import {
     filterAndSortTasks,
 } from '../components/project/taskUtils'
 
-function ProjectDetails() {
-    const { projectId } = useParams()
+// projectId comes from the route (see App.tsx), which only renders this page
+// when the URL contains one.
+function ProjectDetails({ projectId }: { projectId: string }) {
     const navigate = useNavigate()
 
-    const [project, setProject] = useState(null)
-    const [tasks, setTasks] = useState([])
-    const [members, setMembers] = useState([])
-    const [invitations, setInvitations] = useState([])
-    const [activities, setActivities] = useState([])
-    const [currentUserId, setCurrentUserId] = useState(null)
+    const [project, setProject] = useState<Project | null>(null)
+    const [tasks, setTasks] = useState<Task[]>([])
+    const [members, setMembers] = useState<ProjectMember[]>([])
+    const [invitations, setInvitations] = useState<ProjectInvitation[]>([])
+    const [activities, setActivities] = useState<ProjectActivity[]>([])
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
     const [loading, setLoading] = useState(true)
     const [loadingActivities, setLoadingActivities] = useState(true)
@@ -60,8 +67,8 @@ function ProjectDetails() {
     const [error, setError] = useState('')
 
     const [showTaskForm, setShowTaskForm] = useState(false)
-    const [editingTaskId, setEditingTaskId] = useState(null)
-    const [updatingTaskIds, setUpdatingTaskIds] = useState([])
+    const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+    const [updatingTaskIds, setUpdatingTaskIds] = useState<string[]>([])
     const [taskView, setTaskView] = useState('list')
 
     // Task search, filters and sorting.
@@ -71,7 +78,7 @@ function ProjectDetails() {
     // Action errors appear as pop-up notices. Empty messages (used by
     // panels to clear a previous error) are ignored.
     const toast = useToast()
-    const notifyError = useCallback((message) => {
+    const notifyError = useCallback((message: string) => {
         if (message) toast.error(message)
     }, [toast])
 
@@ -123,7 +130,7 @@ function ProjectDetails() {
                     (member) => member.user_id === user.id
                 )
 
-                let invitationData = []
+                let invitationData: ProjectInvitation[] = []
 
                 if (
                     currentMember &&
@@ -153,13 +160,12 @@ function ProjectDetails() {
 
                     setActivities([])
                     setActivityError(
-                        activityErr.message ||
-                        'Unable to load project activities.'
+                        getErrorMessage(activityErr, 'Unable to load project activities.')
                     )
                 }
             } catch (err) {
                 if (active) {
-                    setError(err.message || 'Unable to load project.')
+                    setError(getErrorMessage(err, 'Unable to load project.'))
                 }
             } finally {
                 if (active) {
@@ -186,7 +192,7 @@ function ProjectDetails() {
             setActivities(data)
         } catch (err) {
             setActivityError(
-                err.message || 'Unable to refresh project activities.'
+                getErrorMessage(err, 'Unable to refresh project activities.')
             )
         } finally {
             setLoadingActivities(false)
@@ -222,8 +228,7 @@ function ProjectDetails() {
                         if (!active) return
 
                         setActivityError(
-                            err.message ||
-                            'Unable to refresh project activities.'
+                            getErrorMessage(err, 'Unable to refresh project activities.')
                         )
                     }
                 }
@@ -255,9 +260,9 @@ function ProjectDetails() {
         // received unfiltered and matched by ID (unknown IDs are ignored).
         const projectFilter = `project_id=eq.${projectId}`
 
-        const handleTaskChange = (payload) => {
+        const handleTaskChange = (payload: RealtimePostgresChangesPayload<Tables<'tasks'>>) => {
             if (payload.eventType === 'INSERT') {
-                const newTask = payload.new
+                const newTask = payload.new as Task
 
                 if (newTask.project_id !== projectId) return
 
@@ -268,14 +273,14 @@ function ProjectDetails() {
 
                     return [newTask, ...withoutDuplicate].sort(
                         (a, b) =>
-                            new Date(b.created_at) -
-                            new Date(a.created_at)
+                            new Date(b.created_at ?? 0).getTime() -
+                            new Date(a.created_at ?? 0).getTime()
                     )
                 })
             }
 
             if (payload.eventType === 'UPDATE') {
-                const updatedTask = payload.new
+                const updatedTask = payload.new as Task
 
                 if (updatedTask.project_id !== projectId) return
 
@@ -347,7 +352,7 @@ function ProjectDetails() {
     }, [projectId, forgetTask])
 
     // Add a newly created task to the list (Realtime may deliver it too).
-    function handleTaskCreated(newTask) {
+    function handleTaskCreated(newTask: Task) {
         setTasks((previous) => [
             newTask,
             ...previous.filter((task) => task.id !== newTask.id),
@@ -355,24 +360,24 @@ function ProjectDetails() {
     }
 
     // Replace a task with the saved version after editing.
-    function handleTaskSaved(savedTask) {
+    function handleTaskSaved(savedTask: Task) {
         patchTask(savedTask.id, savedTask)
     }
 
     // Remove a deleted task and anything loaded for it.
-    function handleTaskDeleted(taskId) {
+    function handleTaskDeleted(taskId: string) {
         setTasks((previous) => previous.filter((task) => task.id !== taskId))
         forgetTask(taskId)
     }
 
     // Task creators and project owners/admins may delete a task.
     // (The database's Row Level Security has the final say.)
-    function canDeleteTask(task) {
+    function canDeleteTask(task: Task) {
         return isProjectAdmin || task.created_by === currentUserId
     }
 
     // Apply a change to a single task in local state.
-    function patchTask(taskId, changes) {
+    function patchTask(taskId: string, changes: Partial<Task>) {
         setTasks((currentTasks) =>
             currentTasks.map((task) =>
                 task.id === taskId ? { ...task, ...changes } : task
@@ -383,27 +388,33 @@ function ProjectDetails() {
     // Save one field of a task optimistically. Several tasks can be saved
     // at the same time; if a save fails, only that task's field is rolled
     // back, so changes from other edits or from teammates are kept.
-    async function saveTaskField(taskId, field, value, saveFn, errorMessage) {
+    async function saveTaskField<V extends string | null>(
+        taskId: string,
+        field: 'status' | 'assignee_id',
+        value: V,
+        saveFn: (taskId: string, value: V) => Promise<unknown>,
+        errorMessage: string
+    ) {
         const task = tasks.find((item) => item.id === taskId)
         if (!task || updatingTaskIds.includes(taskId)) return
 
         const previousValue = task[field]
 
         setUpdatingTaskIds((ids) => [...ids, taskId])
-        patchTask(taskId, { [field]: value })
+        patchTask(taskId, { [field]: value } as Partial<Task>)
 
         try {
             await saveFn(taskId, value)
         } catch (err) {
-            patchTask(taskId, { [field]: previousValue })
-            notifyError(err.message || errorMessage)
+            patchTask(taskId, { [field]: previousValue } as Partial<Task>)
+            notifyError(getErrorMessage(err, errorMessage))
         } finally {
             setUpdatingTaskIds((ids) => ids.filter((id) => id !== taskId))
         }
     }
 
     // Update task status.
-    function handleStatusChange(taskId, newStatus) {
+    function handleStatusChange(taskId: string, newStatus: string) {
         return saveTaskField(
             taskId,
             'status',
@@ -414,7 +425,7 @@ function ProjectDetails() {
     }
 
     // Assign a task to a project member.
-    function handleAssigneeChange(taskId, assigneeId) {
+    function handleAssigneeChange(taskId: string, assigneeId: string) {
         return saveTaskField(
             taskId,
             'assignee_id',

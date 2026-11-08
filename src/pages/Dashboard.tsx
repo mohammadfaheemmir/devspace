@@ -1,5 +1,10 @@
 
-import { useEffect, useRef, useState } from 'react'
+import { getErrorMessage } from '../lib/errors'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import type { Notification, Project } from '../types/app'
+import type { MyProfile } from '../lib/profileService'
+import type { ProjectSummary } from '../lib/projectService'
+import type { MyInvitation } from '../lib/invitationService'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import {
@@ -51,21 +56,21 @@ function Dashboard() {
 
     // Remembers which navigation's one-time message was already shown, so
     // React StrictMode's double effect run does not show it twice.
-    const shownMessageKey = useRef(null)
+    const shownMessageKey = useRef<string | null>(null)
 
     // Profile from the profiles table (kept up to date by Profile Settings).
-    const [profile, setProfile] = useState(null)
+    const [profile, setProfile] = useState<MyProfile | null>(null)
 
-    const [projects, setProjects] = useState([])
+    const [projects, setProjects] = useState<Project[]>([])
     // Per-project role and task counts, keyed by project ID.
-    const [projectSummaries, setProjectSummaries] = useState({})
+    const [projectSummaries, setProjectSummaries] = useState<Record<string, ProjectSummary>>({})
     const [projectSearch, setProjectSearch] = useState('')
-    const [invitations, setInvitations] = useState([])
+    const [invitations, setInvitations] = useState<MyInvitation[]>([])
 
     const [loading, setLoading] = useState(true)
     const [invitationLoading, setInvitationLoading] = useState(true)
-    const [acceptingInvitation, setAcceptingInvitation] = useState(null)
-    const [decliningInvitation, setDecliningInvitation] = useState(null)
+    const [acceptingInvitation, setAcceptingInvitation] = useState<string | null>(null)
+    const [decliningInvitation, setDecliningInvitation] = useState<string | null>(null)
 
     const [creating, setCreating] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -93,8 +98,8 @@ function Dashboard() {
 
     // Close the notification dropdown and the create-project modal on
     // Escape or a click outside them.
-    const notificationMenuRef = useRef(null)
-    const createDialogRef = useRef(null)
+    const notificationMenuRef = useRef<HTMLDivElement>(null)
+    const createDialogRef = useRef<HTMLDivElement>(null)
 
     useDismiss(notificationMenuRef, notificationsOpen, () => setNotificationsOpen(false))
     useDialogFocus(createDialogRef, creating)
@@ -164,7 +169,7 @@ function Dashboard() {
                 }
             } catch (err) {
                 console.error('Loading projects failed:', err)
-                setError(err.message || 'Unable to load projects.')
+                setError(getErrorMessage(err, 'Unable to load projects.'))
             } finally {
                 setLoading(false)
             }
@@ -182,7 +187,7 @@ function Dashboard() {
             } catch (err) {
                 console.error('Loading invitations failed:', err)
                 setInvitationError(
-                    err.message || 'Unable to load invitations.'
+                    getErrorMessage(err, 'Unable to load invitations.')
                 )
             } finally {
                 setInvitationLoading(false)
@@ -193,7 +198,7 @@ function Dashboard() {
     }, [])
 
     // Create a new project
-    const handleCreateProject = async (e) => {
+    const handleCreateProject = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setError('')
 
@@ -226,7 +231,7 @@ function Dashboard() {
             toast.success(`Project "${newProject.name}" created.`)
         } catch (err) {
             console.error('Project creation failed:', err)
-            toast.error(err.message || 'Unable to create project.')
+            toast.error(getErrorMessage(err, 'Unable to create project.'))
         } finally {
             setSaving(false)
         }
@@ -234,7 +239,7 @@ function Dashboard() {
 
     // Accept an invitation
     // Decline an invitation (after confirmation) and remove it from the list
-    const handleDeclineInvitation = async (invitation) => {
+    const handleDeclineInvitation = async (invitation: MyInvitation) => {
         const confirmed = window.confirm(
             `Decline the invitation to "${invitation.project_name}"?`
         )
@@ -257,14 +262,14 @@ function Dashboard() {
         } catch (err) {
             console.error('Decline invitation failed:', err)
             setInvitationError(
-                err.message || 'Unable to decline this invitation.'
+                getErrorMessage(err, 'Unable to decline this invitation.')
             )
         } finally {
             setDecliningInvitation(null)
         }
     }
 
-    const handleAcceptInvitation = async (invitation) => {
+    const handleAcceptInvitation = async (invitation: MyInvitation) => {
         setInvitationError('')
         setAcceptingInvitation(invitation.invitation_id)
 
@@ -284,7 +289,7 @@ function Dashboard() {
         } catch (err) {
             console.error('Accept invitation failed:', err)
             setInvitationError(
-                err.message || 'Unable to accept this invitation.'
+                getErrorMessage(err, 'Unable to accept this invitation.')
             )
         } finally {
             setAcceptingInvitation(null)
@@ -292,7 +297,7 @@ function Dashboard() {
     }
 
     // Mark a notification as read and open what it refers to
-    const handleNotificationClick = async (notification) => {
+    const handleNotificationClick = async (notification: Notification) => {
         const updated = await markAsRead(notification)
         if (!updated) return
 
@@ -325,7 +330,7 @@ function Dashboard() {
         : projects
 
     // Open project workspace
-    const openProject = (projectId) => {
+    const openProject = (projectId: string) => {
         navigate(`/projects/${projectId}`)
     }
 

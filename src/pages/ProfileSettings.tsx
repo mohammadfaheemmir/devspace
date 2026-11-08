@@ -1,5 +1,6 @@
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { getErrorMessage } from '../lib/errors'
 import { useNavigate } from 'react-router-dom'
 import {
     ArrowLeft,
@@ -21,12 +22,13 @@ import {
     updateMyEmail,
     updateMyPassword,
 } from '../lib/profileService'
+import type { MyProfile } from '../lib/profileService'
 
 function ProfileSettings() {
     const navigate = useNavigate()
-    const fileInputRef = useRef(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const [profile, setProfile] = useState(null)
+    const [profile, setProfile] = useState<MyProfile | null>(null)
     const [fullName, setFullName] = useState('')
     const [email, setEmail] = useState('')
 
@@ -53,7 +55,7 @@ function ProfileSettings() {
                 // Leave the "new email" field empty; the current email
                 // is shown separately in a read-only field.
             } catch (err) {
-                setError(err.message || 'Unable to load your profile.')
+                setError(getErrorMessage(err, 'Unable to load your profile.'))
             } finally {
                 setLoading(false)
             }
@@ -62,17 +64,17 @@ function ProfileSettings() {
         loadProfile()
     }, [])
 
-    function showMessage(text) {
+    function showMessage(text: string) {
         setError('')
         setMessage(text)
     }
 
-    function showError(text) {
+    function showError(text: string) {
         setMessage('')
         setError(text)
     }
 
-    async function handleSaveName(e) {
+    async function handleSaveName(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setMessage('')
         setError('')
@@ -82,21 +84,21 @@ function ProfileSettings() {
 
             const updatedProfile = await updateMyProfile(fullName)
 
-            setProfile((previous) => ({
+            setProfile((previous) => previous && ({
                 ...previous,
                 ...updatedProfile,
             }))
 
-            setFullName(updatedProfile.full_name)
+            setFullName(updatedProfile.full_name ?? '')
             showMessage('Your profile name has been updated.')
         } catch (err) {
-            showError(err.message || 'Unable to update your name.')
+            showError(getErrorMessage(err, 'Unable to update your name.'))
         } finally {
             setSavingName(false)
         }
     }
 
-    async function handleAvatarUpload(e) {
+    async function handleAvatarUpload(e: ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
 
         if (!file) return
@@ -109,14 +111,14 @@ function ProfileSettings() {
 
             const avatarUrl = await uploadMyAvatar(file)
 
-            setProfile((previous) => ({
+            setProfile((previous) => previous && ({
                 ...previous,
                 avatar_url: avatarUrl,
             }))
 
             showMessage('Profile picture uploaded successfully.')
         } catch (err) {
-            showError(err.message || 'Unable to upload your picture.')
+            showError(getErrorMessage(err, 'Unable to upload your picture.'))
         } finally {
             setUploadingAvatar(false)
             e.target.value = ''
@@ -138,20 +140,20 @@ function ProfileSettings() {
 
             await removeMyAvatar()
 
-            setProfile((previous) => ({
+            setProfile((previous) => previous && ({
                 ...previous,
                 avatar_url: null,
             }))
 
             showMessage('Profile picture removed successfully.')
         } catch (err) {
-            showError(err.message || 'Unable to remove your picture.')
+            showError(getErrorMessage(err, 'Unable to remove your picture.'))
         } finally {
             setRemovingAvatar(false)
         }
     }
 
-    async function handleChangeEmail(e) {
+    async function handleChangeEmail(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setMessage('')
         setError('')
@@ -166,13 +168,13 @@ function ProfileSettings() {
                 'Email change requested. Check your inbox for the verification email and follow its instructions.'
             )
         } catch (err) {
-            showError(err.message || 'Unable to update your email.')
+            showError(getErrorMessage(err, 'Unable to update your email.'))
         } finally {
             setChangingEmail(false)
         }
     }
 
-    async function handleChangePassword(e) {
+    async function handleChangePassword(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setMessage('')
         setError('')
@@ -192,7 +194,7 @@ function ProfileSettings() {
 
             showMessage('Your password has been updated successfully.')
         } catch (err) {
-            showError(err.message || 'Unable to update your password.')
+            showError(getErrorMessage(err, 'Unable to update your password.'))
         } finally {
             setChangingPassword(false)
         }

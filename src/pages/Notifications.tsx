@@ -6,6 +6,7 @@ import { useAuth } from '../context/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
 import NotificationItem from '../components/notifications/NotificationItem'
 import { getNotificationLink } from '../components/notifications/notificationUtils'
+import type { Notification } from '../types/app'
 
 // Full notification history with an All / Unread filter.
 function Notifications() {
@@ -28,7 +29,7 @@ function Notifications() {
             ? notifications.filter((notification) => !notification.is_read)
             : notifications
 
-    async function handleNotificationClick(notification) {
+    async function handleNotificationClick(notification: Notification) {
         const updated = await markAsRead(notification)
         const link = getNotificationLink(notification)
 

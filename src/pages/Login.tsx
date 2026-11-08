@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 
@@ -12,7 +12,7 @@ function Login() {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
-    const handleLogin = async (e) => {
+    const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setError('')
         setLoading(true)
