@@ -37,7 +37,7 @@ import ProjectDangerZone from '../components/project/ProjectDangerZone'
 import InvitationsPanel from '../components/project/InvitationsPanel'
 import TaskFilters from '../components/project/TaskFilters'
 import TaskListItem from '../components/project/TaskListItem'
-import CreateTaskModal from '../components/project/CreateTaskModal'
+import TaskFormModal from '../components/project/TaskFormModal'
 import {
     DEFAULT_TASK_FILTERS,
     filterAndSortTasks,
@@ -60,6 +60,7 @@ function ProjectDetails() {
     const [error, setError] = useState('')
 
     const [showTaskForm, setShowTaskForm] = useState(false)
+    const [editingTaskId, setEditingTaskId] = useState(null)
     const [updatingTaskIds, setUpdatingTaskIds] = useState([])
     const [taskView, setTaskView] = useState('list')
 
@@ -353,6 +354,23 @@ function ProjectDetails() {
         ])
     }
 
+    // Replace a task with the saved version after editing.
+    function handleTaskSaved(savedTask) {
+        patchTask(savedTask.id, savedTask)
+    }
+
+    // Remove a deleted task and anything loaded for it.
+    function handleTaskDeleted(taskId) {
+        setTasks((previous) => previous.filter((task) => task.id !== taskId))
+        forgetTask(taskId)
+    }
+
+    // Task creators and project owners/admins may delete a task.
+    // (The database's Row Level Security has the final say.)
+    function canDeleteTask(task) {
+        return isProjectAdmin || task.created_by === currentUserId
+    }
+
     // Apply a change to a single task in local state.
     function patchTask(taskId, changes) {
         setTasks((currentTasks) =>
@@ -420,6 +438,7 @@ function ProjectDetails() {
     ).length
 
     const filteredTasks = filterAndSortTasks(tasks, filters)
+    const editingTask = tasks.find((task) => task.id === editingTaskId) || null
 
     function resetFilters() {
         setFilters(DEFAULT_TASK_FILTERS)
@@ -658,6 +677,7 @@ function ProjectDetails() {
                         members={members}
                         onStatusChange={handleStatusChange}
                         updatingTaskIds={updatingTaskIds}
+                        onEdit={(task) => setEditingTaskId(task.id)}
                     />
                 ) : (
                     tasks.length === 0 ? (
@@ -701,6 +721,7 @@ function ProjectDetails() {
                                     comments={comments}
                                     currentUserId={currentUserId}
                                     isProjectAdmin={isProjectAdmin}
+                                    onEdit={() => setEditingTaskId(task.id)}
                                 />
                             ))}
                         </div>
@@ -709,11 +730,26 @@ function ProjectDetails() {
 
                 {/* Create task modal */}
                 {showTaskForm && (
-                    <CreateTaskModal
+                    <TaskFormModal
                         projectId={projectId}
                         members={members}
-                        onCreated={handleTaskCreated}
+                        onSaved={handleTaskCreated}
                         onClose={() => setShowTaskForm(false)}
+                        onError={notifyError}
+                    />
+                )}
+
+                {/* Edit task modal (closes by itself if the task is deleted elsewhere) */}
+                {editingTask && (
+                    <TaskFormModal
+                        key={editingTask.id}
+                        projectId={projectId}
+                        members={members}
+                        task={editingTask}
+                        canDelete={canDeleteTask(editingTask)}
+                        onSaved={handleTaskSaved}
+                        onDeleted={handleTaskDeleted}
+                        onClose={() => setEditingTaskId(null)}
                         onError={notifyError}
                     />
                 )}

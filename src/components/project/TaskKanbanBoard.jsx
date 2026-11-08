@@ -3,6 +3,7 @@ import {
     CheckCircle2,
     Clock3,
     Circle,
+    Pencil,
 } from 'lucide-react'
 import {
     formatDueDate,
@@ -10,7 +11,7 @@ import {
     isTaskOverdue,
 } from './taskUtils'
 
-function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, updatingTaskIds = [] }) {
+function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, updatingTaskIds = [] }) {
     const [draggedTaskId, setDraggedTaskId] = useState(null)
     const [dragOverColumn, setDragOverColumn] = useState(null)
 
@@ -123,6 +124,17 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, updatingTas
                                         <option value="in_progress">In Progress</option>
                                         <option value="done">Done</option>
                                     </select>
+                                    {onEdit && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onEdit(task)}
+                                            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                                            aria-label={`Edit ${task.title}`}
+                                        >
+                                            <Pencil size={13} />
+                                            Edit
+                                        </button>
+                                    )}
                                 </article>
                             ))}
                             {columnTasks.length === 0 && (

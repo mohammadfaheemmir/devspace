@@ -1,4 +1,4 @@
-import { Clock3 } from 'lucide-react'
+import { Clock3, Pencil } from 'lucide-react'
 import TaskComments from './TaskComments'
 import {
     formatDueDate,
@@ -20,6 +20,7 @@ function TaskListItem({
     comments,
     currentUserId,
     isProjectAdmin,
+    onEdit,
 }) {
     const overdue = isTaskOverdue(task)
 
@@ -84,6 +85,16 @@ function TaskListItem({
                             </option>
                         ))}
                     </select>
+
+                    <button
+                        type="button"
+                        onClick={onEdit}
+                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                        aria-label={`Edit ${task.title}`}
+                    >
+                        <Pencil size={15} />
+                        Edit
+                    </button>
 
                     {isUpdating && (
                         <span className="text-xs text-slate-400 self-center">Saving...</span>

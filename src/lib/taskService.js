@@ -102,3 +102,77 @@ export async function updateTaskAssignee(taskId, assigneeId) {
 
     return data
 }
+
+const ALLOWED_PRIORITIES = ['low', 'medium', 'high']
+
+// Edit a task's details (title, description, priority, assignee, due date).
+export async function updateTask(taskId, task) {
+    await getCurrentUser()
+
+    if (!taskId) {
+        throw new Error('Task ID is required.')
+    }
+
+    const title = task?.title?.trim()
+
+    if (!title) {
+        throw new Error('Task title is required.')
+    }
+
+    const priority = task.priority || 'medium'
+
+    if (!ALLOWED_PRIORITIES.includes(priority)) {
+        throw new Error('Invalid task priority.')
+    }
+
+    const { data, error } = await supabase
+        .from('tasks')
+        .update({
+            title,
+            description: task.description?.trim() || null,
+            priority,
+            assignee_id: task.assignee_id || null,
+            due_date: task.due_date || null,
+        })
+        .eq('id', taskId)
+        .select()
+        .maybeSingle()
+
+    if (error) throw new Error(error.message)
+
+    // Row Level Security returns no row (rather than an error) when the
+    // user is not allowed to change this task.
+    if (!data) {
+        throw new Error(
+            'Task was not updated. It may have been deleted, or you may not have permission to edit it.'
+        )
+    }
+
+    return data
+}
+
+// Delete a task. Whether its comments are removed with it depends on the
+// database foreign key (ON DELETE CASCADE); otherwise Supabase returns an error.
+export async function deleteTask(taskId) {
+    await getCurrentUser()
+
+    if (!taskId) {
+        throw new Error('Task ID is required.')
+    }
+
+    const { data, error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+        .select('id')
+
+    if (error) throw new Error(error.message)
+
+    if (!data || data.length === 0) {
+        throw new Error(
+            'Task was not deleted. It may already be gone, or you may not have permission to delete it.'
+        )
+    }
+
+    return true
+}
