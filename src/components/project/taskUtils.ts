@@ -129,3 +129,14 @@ export function getMemberName(
     const member = members.find((item) => item.user_id === userId)
     return member?.full_name || 'Unknown member'
 }
+
+// Left-edge accent colour for a task card, by status.
+const STATUS_ACCENT: Record<TaskStatus, string> = {
+    todo: 'border-l-slate-500',
+    in_progress: 'border-l-yellow-400',
+    done: 'border-l-green-500',
+}
+
+export function getStatusAccent(status: string | null | undefined): string {
+    return STATUS_ACCENT[status as TaskStatus] ?? STATUS_ACCENT.todo
+}

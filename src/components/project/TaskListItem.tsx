@@ -1,11 +1,7 @@
-import { Clock3, Pencil } from 'lucide-react'
+import { LoaderCircle, Pencil } from 'lucide-react'
 import TaskComments from './TaskComments'
-import {
-    formatDueDate,
-    getMemberName,
-    getPriorityBadgeClasses,
-    isTaskOverdue,
-} from './taskUtils'
+import TaskMeta from './TaskMeta'
+import { getStatusAccent } from './taskUtils'
 import type { ProjectLabel, ProjectMember, Task } from '../../types/app'
 import { TaskLabelList } from './LabelChip'
 import type { TaskCommentsApi } from '../../hooks/useTaskComments'
@@ -25,7 +21,7 @@ type TaskListItemProps = {
 }
 
 const selectClass =
-    'bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 disabled:opacity-50'
+    'w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none transition hover:border-slate-600 focus:border-indigo-500 disabled:opacity-50 sm:w-auto'
 
 // One task in the list view: details, status/assignee pickers and comments.
 function TaskListItem({
@@ -41,47 +37,32 @@ function TaskListItem({
     labels = [],
     labelIds,
 }: TaskListItemProps) {
-    const overdue = isTaskOverdue(task)
+    const done = task.status === 'done'
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div className="min-w-0">
-                    <h3 className="font-semibold break-words">{task.title}</h3>
+        <div className={`rounded-xl border border-l-4 border-slate-800 bg-slate-900/70 p-4 shadow-lg shadow-black/10 transition hover:border-slate-700 sm:p-5 ${getStatusAccent(task.status)}`}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                    <h3 className={`break-words font-semibold ${done ? 'text-slate-400 line-through decoration-slate-600' : ''}`}>
+                        {task.title}
+                    </h3>
 
                     {task.description && (
-                        <p className="text-sm text-slate-400 mt-1 break-words">{task.description}</p>
+                        <p className="mt-1 line-clamp-3 break-words text-sm text-slate-400">{task.description}</p>
+                    )}
+
+                    {labelIds && labelIds.length > 0 && (
+                        <div className="mt-3">
+                            <TaskLabelList labels={labels} labelIds={labelIds} />
+                        </div>
                     )}
 
                     <div className="mt-3">
-                        <TaskLabelList labels={labels} labelIds={labelIds} />
+                        <TaskMeta task={task} members={members} />
                     </div>
-
-                    <span className={`inline-block mt-3 text-xs px-3 py-1 rounded-full capitalize ${getPriorityBadgeClasses(task.priority)}`}>
-                        {task.priority || 'medium'} priority
-                    </span>
-
-                    {task.due_date && (
-                        <p className={`mt-3 flex items-center gap-2 text-xs ${overdue
-                            ? 'text-red-400'
-                            : task.status === 'done'
-                                ? 'text-green-400'
-                                : 'text-slate-400'
-                            }`}>
-                            <Clock3 size={14} />
-                            {overdue
-                                ? `Overdue · ${formatDueDate(task.due_date)}`
-                                : `Due ${formatDueDate(task.due_date)}`}
-                        </p>
-                    )}
-
-                    <p className="text-xs text-slate-400 mt-3">
-                        Assigned to:{' '}
-                        {task.assignee_id ? getMemberName(members, task.assignee_id) : 'Unassigned'}
-                    </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
                     <select
                         value={task.status}
                         disabled={isUpdating}
@@ -112,7 +93,7 @@ function TaskListItem({
                     <button
                         type="button"
                         onClick={onEdit}
-                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-indigo-500/60 hover:bg-slate-800 hover:text-white"
                         aria-label={`Edit ${task.title}`}
                     >
                         <Pencil size={15} />
@@ -120,7 +101,10 @@ function TaskListItem({
                     </button>
 
                     {isUpdating && (
-                        <span className="text-xs text-slate-400 self-center">Saving...</span>
+                        <span role="status" className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
+                            <LoaderCircle size={13} className="animate-spin" />
+                            Saving...
+                        </span>
                     )}
                 </div>
             </div>
