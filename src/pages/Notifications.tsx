@@ -47,21 +47,24 @@ function Notifications() {
     ]
 
     return (
-        <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6">
+        <div className="min-h-screen px-4 py-8 text-white sm:px-6">
             <div className="mx-auto max-w-3xl">
-                <div className="mb-8 flex items-center gap-4">
-                    <button
-                        type="button"
-                        onClick={() => navigate('/dashboard')}
-                        className="rounded-lg border border-slate-700 p-2 transition hover:bg-slate-800"
-                        aria-label="Back to dashboard"
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
+                <button
+                    type="button"
+                    onClick={() => navigate('/dashboard')}
+                    className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
+                >
+                    <ArrowLeft size={16} />
+                    Back to dashboard
+                </button>
 
+                <div className="mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold">Notifications</h1>
-                        <p className="mt-1 text-sm text-slate-400">
+                        <p className="mb-1 text-xs font-medium uppercase tracking-wider text-indigo-300">
+                            Inbox
+                        </p>
+                        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Notifications</h1>
+                        <p className="mt-2 text-sm text-slate-400">
                             {unreadCount === 0
                                 ? 'You are all caught up.'
                                 : `${unreadCount} unread ${unreadCount === 1 ? 'notification' : 'notifications'}`}
@@ -70,21 +73,28 @@ function Notifications() {
                 </div>
 
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-1" role="group" aria-label="Filter notifications">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                type="button"
-                                onClick={() => setFilter(tab.id)}
-                                aria-pressed={filter === tab.id}
-                                className={`rounded-md px-4 py-2 text-sm transition ${filter === tab.id
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-slate-400 hover:text-white'
-                                    }`}
-                            >
-                                {tab.label} ({tab.count})
-                            </button>
-                        ))}
+                    <div className="inline-flex gap-1 rounded-xl border border-slate-800 bg-slate-900/60 p-1" role="group" aria-label="Filter notifications">
+                        {tabs.map((tab) => {
+                            const selected = filter === tab.id
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setFilter(tab.id)}
+                                    aria-pressed={selected}
+                                    aria-label={`${tab.label} (${tab.count})`}
+                                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${selected
+                                        ? 'bg-indigo-600 text-white shadow'
+                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                        }`}
+                                >
+                                    {tab.label}
+                                    <span className={`rounded-full px-1.5 text-xs ${selected ? 'bg-white/20' : 'bg-slate-800 text-slate-300'}`}>
+                                        {tab.count}
+                                    </span>
+                                </button>
+                            )
+                        })}
                     </div>
 
                     {unreadCount > 0 && (
@@ -106,7 +116,7 @@ function Notifications() {
                     </div>
                 )}
 
-                <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+                <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-black/20">
                     {loading ? (
                         <p className="flex items-center justify-center gap-3 p-10 text-sm text-slate-400">
                             <LoaderCircle size={18} className="animate-spin" />

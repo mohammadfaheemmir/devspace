@@ -23,10 +23,13 @@ import {
     updateMyPassword,
 } from '../lib/profileService'
 import type { MyProfile } from '../lib/profileService'
+import { useToast } from '../context/useToast'
+import PasswordInput from '../components/PasswordInput'
 
 function ProfileSettings() {
     const navigate = useNavigate()
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const toast = useToast()
 
     const [profile, setProfile] = useState<MyProfile | null>(null)
     const [fullName, setFullName] = useState('')
@@ -42,7 +45,8 @@ function ProfileSettings() {
     const [changingEmail, setChangingEmail] = useState(false)
     const [changingPassword, setChangingPassword] = useState(false)
 
-    const [message, setMessage] = useState('')
+    // Only for a failed profile load; action results are shown as toasts,
+    // which stay visible wherever the form is on the page.
     const [error, setError] = useState('')
 
     useEffect(() => {
@@ -65,19 +69,15 @@ function ProfileSettings() {
     }, [])
 
     function showMessage(text: string) {
-        setError('')
-        setMessage(text)
+        toast.success(text)
     }
 
     function showError(text: string) {
-        setMessage('')
-        setError(text)
+        toast.error(text)
     }
 
     async function handleSaveName(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
-        setMessage('')
-        setError('')
 
         try {
             setSavingName(true)
@@ -102,9 +102,6 @@ function ProfileSettings() {
         const file = e.target.files?.[0]
 
         if (!file) return
-
-        setMessage('')
-        setError('')
 
         try {
             setUploadingAvatar(true)
@@ -132,9 +129,6 @@ function ProfileSettings() {
 
         if (!confirmed) return
 
-        setMessage('')
-        setError('')
-
         try {
             setRemovingAvatar(true)
 
@@ -155,8 +149,6 @@ function ProfileSettings() {
 
     async function handleChangeEmail(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
-        setMessage('')
-        setError('')
 
         try {
             setChangingEmail(true)
@@ -176,8 +168,6 @@ function ProfileSettings() {
 
     async function handleChangePassword(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
-        setMessage('')
-        setError('')
 
         if (newPassword !== confirmPassword) {
             showError('The passwords do not match.')
@@ -207,7 +197,7 @@ function ProfileSettings() {
 
     if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
+            <div className="flex min-h-screen items-center justify-center text-slate-300">
                 <LoaderCircle className="mr-3 animate-spin" size={22} />
                 Loading profile...
             </div>
@@ -215,37 +205,30 @@ function ProfileSettings() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6">
+        <div className="min-h-screen px-4 py-8 text-white sm:px-6">
             <div className="mx-auto max-w-3xl">
 
-                {/* Header */}
-                <div className="mb-8 flex items-center gap-4">
-                    <button
-                        type="button"
-                        onClick={() => navigate('/dashboard')}
-                        className="rounded-lg border border-slate-700 p-2 transition hover:bg-slate-800"
-                        aria-label="Back to dashboard"
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
+                <button
+                    type="button"
+                    onClick={() => navigate('/dashboard')}
+                    className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
+                >
+                    <ArrowLeft size={16} />
+                    Back to dashboard
+                </button>
 
+                {/* Header */}
+                <div className="mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold">Account Settings</h1>
-                        <p className="mt-1 text-sm text-slate-400">
+                        <p className="mb-1 text-xs font-medium uppercase tracking-wider text-indigo-300">
+                            Account
+                        </p>
+                        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Account Settings</h1>
+                        <p className="mt-2 text-sm text-slate-400">
                             Manage your profile and account security.
                         </p>
                     </div>
                 </div>
-
-                {/* Status messages */}
-                {message && (
-                    <div
-                        role="status"
-                        className="mb-5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
-                    >
-                        {message}
-                    </div>
-                )}
 
                 {error && (
                     <div
@@ -257,7 +240,7 @@ function ProfileSettings() {
                 )}
 
                 {/* Profile information */}
-                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20">
                     <div className="mb-6 flex items-center gap-3">
                         <UserRound className="text-indigo-400" size={22} />
                         <div>
@@ -364,7 +347,7 @@ function ProfileSettings() {
                 </section>
 
                 {/* Email settings */}
-                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20">
                     <div className="mb-6 flex items-center gap-3">
                         <Mail className="text-indigo-400" size={22} />
                         <div>
@@ -427,7 +410,7 @@ function ProfileSettings() {
                 </section>
 
                 {/* Password settings */}
-                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20">
                     <div className="mb-6 flex items-center gap-3">
                         <LockKeyhole className="text-indigo-400" size={22} />
                         <div>
@@ -443,16 +426,15 @@ function ProfileSettings() {
                             <label htmlFor="profile-new-password" className="mb-2 block text-sm font-medium text-slate-300">
                                 New password
                             </label>
-                            <input
+                            <PasswordInput
                                 id="profile-new-password"
-                                type="password"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 placeholder="Enter new password"
                                 minLength={8}
                                 autoComplete="new-password"
                                 required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-indigo-500"
+                                className="border-slate-700 bg-slate-950 text-white focus:border-indigo-500"
                             />
                         </div>
 
@@ -460,16 +442,15 @@ function ProfileSettings() {
                             <label htmlFor="profile-confirm-password" className="mb-2 block text-sm font-medium text-slate-300">
                                 Confirm new password
                             </label>
-                            <input
+                            <PasswordInput
                                 id="profile-confirm-password"
-                                type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 placeholder="Confirm new password"
                                 minLength={8}
                                 autoComplete="new-password"
                                 required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-indigo-500"
+                                className="border-slate-700 bg-slate-950 text-white focus:border-indigo-500"
                             />
                         </div>
 
@@ -491,17 +472,6 @@ function ProfileSettings() {
                         </button>
                     </form>
                 </section>
-
-                <button
-                    type="button"
-                    onClick={() => navigate('/dashboard')}
-                    className="text-sm text-slate-400 transition hover:text-white"
-                >
-                    <span className="inline-flex items-center gap-2">
-                        <ArrowLeft size={16} />
-                        Back to dashboard
-                    </span>
-                </button>
 
             </div>
         </div>
