@@ -58,3 +58,6 @@ Thumbs.db
 
 # Temporary files
 *.local
+
+# Supabase CLI local state
+supabase/.temp/
