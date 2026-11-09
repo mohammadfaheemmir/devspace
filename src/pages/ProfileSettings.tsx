@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { getErrorMessage } from '../lib/errors'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -12,6 +12,10 @@ import {
     Trash2,
     LoaderCircle,
     ShieldCheck,
+    CalendarDays,
+    Check,
+    Circle,
+    LogOut,
 } from 'lucide-react'
 
 import {
@@ -24,12 +28,14 @@ import {
 } from '../lib/profileService'
 import type { MyProfile } from '../lib/profileService'
 import { useToast } from '../context/useToast'
+import { useAuth } from '../context/useAuth'
 import PasswordInput from '../components/PasswordInput'
 
 function ProfileSettings() {
     const navigate = useNavigate()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const toast = useToast()
+    const { logout } = useAuth()
 
     const [profile, setProfile] = useState<MyProfile | null>(null)
     const [fullName, setFullName] = useState('')
@@ -190,10 +196,36 @@ function ProfileSettings() {
         }
     }
 
+    async function handleLogout() {
+        const { error: logoutError } = await logout()
+
+        if (logoutError) {
+            showError(logoutError.message)
+            return
+        }
+
+        navigate('/login', { replace: true })
+    }
+
     const displayName =
         profile?.full_name || profile?.email?.split('@')[0] || 'User'
 
     const initial = displayName.charAt(0).toUpperCase()
+
+    const memberSince = profile?.created_at
+        ? new Date(profile.created_at).toLocaleDateString([], { month: 'long', year: 'numeric' })
+        : null
+
+    // Buttons only wake up when there is something to save.
+    const trimmedName = fullName.trim()
+    const nameChanged = trimmedName !== '' && trimmedName !== (profile?.full_name ?? '')
+
+    const trimmedEmail = email.trim()
+    const emailChanged = trimmedEmail !== '' && trimmedEmail.toLowerCase() !== (profile?.email ?? '').toLowerCase()
+
+    const passwordLongEnough = newPassword.length >= 8
+    const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword
+    const avatarBusy = uploadingAvatar || removingAvatar
 
     if (loading) {
         return (
@@ -217,18 +249,7 @@ function ProfileSettings() {
                     Back to dashboard
                 </button>
 
-                {/* Header */}
-                <div className="mb-6">
-                    <div>
-                        <p className="mb-1 text-xs font-medium uppercase tracking-wider text-indigo-300">
-                            Account
-                        </p>
-                        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Account Settings</h1>
-                        <p className="mt-2 text-sm text-slate-400">
-                            Manage your profile and account security.
-                        </p>
-                    </div>
-                </div>
+                <h1 className="sr-only">Account Settings</h1>
 
                 {error && (
                     <div
@@ -239,84 +260,106 @@ function ProfileSettings() {
                     </div>
                 )}
 
-                {/* Profile information */}
-                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20">
-                    <div className="mb-6 flex items-center gap-3">
-                        <UserRound className="text-indigo-400" size={22} />
-                        <div>
-                            <h2 className="text-lg font-semibold">Profile Information</h2>
-                            <p className="text-sm text-slate-400">
-                                Update your public profile details.
-                            </p>
-                        </div>
-                    </div>
+                {/* Profile header: photo, name, email, member since */}
+                <section className="mb-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-black/20">
+                    <div aria-hidden="true" className="h-24 bg-gradient-to-r from-indigo-600/40 via-violet-600/30 to-sky-500/20 sm:h-28" />
 
-                    {/* Avatar */}
-                    <div className="mb-7 flex flex-wrap items-center gap-5">
-                        <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-slate-700 bg-indigo-600 text-3xl font-bold">
-                            {profile?.avatar_url ? (
-                                <img
-                                    src={profile.avatar_url}
-                                    alt="Profile"
-                                    className="h-full w-full object-cover"
-                                />
-                            ) : (
-                                initial
-                            )}
-                        </div>
-
-                        <div>
-                            <p className="mb-2 font-medium">Profile picture</p>
-                            <p className="mb-3 text-xs text-slate-400">
-                                JPG, PNG or WebP. Maximum size 2 MB.
-                            </p>
-
-                            <div className="flex flex-wrap gap-2">
+                    <div className="px-5 pb-6 sm:px-6">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                                {/* Clicking the photo opens the file picker */}
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploadingAvatar || removingAvatar}
-                                    className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium transition hover:bg-indigo-500 disabled:opacity-50"
+                                    disabled={avatarBusy}
+                                    aria-label={profile?.avatar_url ? 'Change profile picture' : 'Upload profile picture'}
+                                    className="group relative -mt-12 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-slate-900 bg-indigo-600 text-3xl font-bold shadow-lg disabled:cursor-wait"
                                 >
-                                    {uploadingAvatar ? (
-                                        <LoaderCircle size={16} className="animate-spin" />
+                                    {profile?.avatar_url ? (
+                                        <img
+                                            src={profile.avatar_url}
+                                            alt=""
+                                            className="h-full w-full object-cover"
+                                        />
                                     ) : (
-                                        <Camera size={16} />
+                                        initial
                                     )}
-                                    {uploadingAvatar ? 'Uploading...' : 'Upload photo'}
+
+                                    <span className={`absolute inset-0 flex items-center justify-center bg-black/55 transition ${avatarBusy ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100'}`}>
+                                        {avatarBusy ? (
+                                            <LoaderCircle size={22} className="animate-spin" />
+                                        ) : (
+                                            <Camera size={22} />
+                                        )}
+                                    </span>
+                                </button>
+
+                                <div className="min-w-0 sm:pt-4">
+                                    <p className="break-words text-xl font-bold tracking-tight sm:text-2xl">{displayName}</p>
+                                    <p className="mt-1 flex items-center gap-1.5 break-all text-sm text-slate-400">
+                                        <Mail size={14} className="shrink-0" />
+                                        {profile?.email}
+                                    </p>
+                                    {memberSince && (
+                                        <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                                            <CalendarDays size={13} className="shrink-0" />
+                                            Member since {memberSince}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 sm:pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={avatarBusy}
+                                    className="flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm transition hover:bg-slate-800 disabled:opacity-50"
+                                >
+                                    <Camera size={15} />
+                                    {uploadingAvatar ? 'Uploading...' : profile?.avatar_url ? 'Change photo' : 'Upload photo'}
                                 </button>
 
                                 {profile?.avatar_url && (
                                     <button
                                         type="button"
                                         onClick={handleRemoveAvatar}
-                                        disabled={removingAvatar || uploadingAvatar}
-                                        className="flex items-center gap-2 rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                                        disabled={avatarBusy}
+                                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
                                     >
-                                        {removingAvatar ? (
-                                            <LoaderCircle size={16} className="animate-spin" />
-                                        ) : (
-                                            <Trash2 size={16} />
-                                        )}
-                                        Remove
+                                        <Trash2 size={15} />
+                                        {removingAvatar ? 'Removing...' : 'Remove'}
                                     </button>
                                 )}
                             </div>
-
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                onChange={handleAvatarUpload}
-                                className="hidden"
-                            />
                         </div>
-                    </div>
 
-                    {/* Full name */}
-                    <form onSubmit={handleSaveName} className="space-y-4">
-                        <div>
-                            <label htmlFor="profile-name" className="mb-2 block text-sm font-medium text-slate-300">
+                        <p className="mt-4 text-xs text-slate-500">
+                            Photo: JPG, PNG or WebP, up to 2 MB.
+                        </p>
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                        />
+                    </div>
+                </section>
+
+                {/* Name */}
+                <section className={SECTION_CLASS} aria-labelledby="profile-name-heading">
+                    <SectionHeading
+                        id="profile-name-heading"
+                        icon={<UserRound size={20} />}
+                        title="Your name"
+                        description="Shown to your teammates on tasks, comments and activity."
+                    />
+
+                    <form onSubmit={handleSaveName} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="flex-1">
+                            <label htmlFor="profile-name" className={LABEL_CLASS}>
                                 Full name
                             </label>
                             <input
@@ -326,142 +369,129 @@ function ProfileSettings() {
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
                                 placeholder="Enter your full name"
+                                maxLength={100}
                                 required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-indigo-500"
+                                className={INPUT_CLASS}
                             />
                         </div>
 
                         <button
                             type="submit"
-                            disabled={savingName}
-                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium transition hover:bg-indigo-500 disabled:opacity-50"
+                            disabled={savingName || !nameChanged}
+                            className={PRIMARY_BUTTON_CLASS}
                         >
                             {savingName ? (
                                 <LoaderCircle size={16} className="animate-spin" />
                             ) : (
                                 <Save size={16} />
                             )}
-                            {savingName ? 'Saving...' : 'Save changes'}
+                            {savingName ? 'Saving...' : 'Save name'}
                         </button>
                     </form>
                 </section>
 
-                {/* Email settings */}
-                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20">
-                    <div className="mb-6 flex items-center gap-3">
-                        <Mail className="text-indigo-400" size={22} />
-                        <div>
-                            <h2 className="text-lg font-semibold">Email Address</h2>
-                            <p className="text-sm text-slate-400">
-                                Update the email associated with your account.
-                            </p>
-                        </div>
-                    </div>
+                {/* Email */}
+                <section className={SECTION_CLASS} aria-labelledby="profile-email-heading">
+                    <SectionHeading
+                        id="profile-email-heading"
+                        icon={<Mail size={20} />}
+                        title="Email address"
+                        description={<>You sign in with <span className="text-slate-200">{profile?.email}</span>.</>}
+                    />
 
-                    <form onSubmit={handleChangeEmail} className="space-y-4">
-                        <div>
-                            <label htmlFor="profile-current-email" className="mb-2 block text-sm font-medium text-slate-300">
-                                Current email
-                            </label>
-                            <input
-                                id="profile-current-email"
-                                type="email"
-                                value={profile?.email || ''}
-                                readOnly
-                                className="w-full cursor-not-allowed rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-slate-400 outline-none"
-                            />
-                        </div>
+                    <form onSubmit={handleChangeEmail} className="space-y-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="flex-1">
+                                <label htmlFor="profile-new-email" className={LABEL_CLASS}>
+                                    New email address
+                                </label>
+                                <input
+                                    id="profile-new-email"
+                                    autoComplete="email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="name@example.com"
+                                    required
+                                    className={INPUT_CLASS}
+                                />
+                            </div>
 
-                        <div>
-                            <label htmlFor="profile-new-email" className="mb-2 block text-sm font-medium text-slate-300">
-                                New email address
-                            </label>
-                            <input
-                                id="profile-new-email"
-                                autoComplete="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="Enter your new email address"
-                                required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-indigo-500"
-                            />
+                            <button
+                                type="submit"
+                                disabled={changingEmail || !emailChanged}
+                                className={PRIMARY_BUTTON_CLASS}
+                            >
+                                {changingEmail ? (
+                                    <LoaderCircle size={16} className="animate-spin" />
+                                ) : (
+                                    <Mail size={16} />
+                                )}
+                                {changingEmail ? 'Sending...' : 'Change email'}
+                            </button>
                         </div>
 
                         <p className="text-xs leading-5 text-slate-400">
-                            Supabase will send verification email(s) according to your
-                            project's email confirmation settings. Your email address
-                            may not change until verification is completed.
+                            We'll email you a confirmation link. Your address only changes after you confirm it.
                         </p>
-
-                        <button
-                            type="submit"
-                            disabled={changingEmail}
-                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium transition hover:bg-indigo-500 disabled:opacity-50"
-                        >
-                            {changingEmail ? (
-                                <LoaderCircle size={16} className="animate-spin" />
-                            ) : (
-                                <Mail size={16} />
-                            )}
-                            {changingEmail ? 'Sending request...' : 'Update email'}
-                        </button>
                     </form>
                 </section>
 
-                {/* Password settings */}
-                <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20">
-                    <div className="mb-6 flex items-center gap-3">
-                        <LockKeyhole className="text-indigo-400" size={22} />
-                        <div>
-                            <h2 className="text-lg font-semibold">Change Password</h2>
-                            <p className="text-sm text-slate-400">
-                                Choose a strong password for your account.
-                            </p>
-                        </div>
-                    </div>
+                {/* Password */}
+                <section className={SECTION_CLASS} aria-labelledby="profile-password-heading">
+                    <SectionHeading
+                        id="profile-password-heading"
+                        icon={<LockKeyhole size={20} />}
+                        title="Password"
+                        description="Use a password you don't use anywhere else."
+                    />
 
                     <form onSubmit={handleChangePassword} className="space-y-4">
-                        <div>
-                            <label htmlFor="profile-new-password" className="mb-2 block text-sm font-medium text-slate-300">
-                                New password
-                            </label>
-                            <PasswordInput
-                                id="profile-new-password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Enter new password"
-                                minLength={8}
-                                autoComplete="new-password"
-                                required
-                                className="border-slate-700 bg-slate-950 text-white focus:border-indigo-500"
-                            />
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label htmlFor="profile-new-password" className={LABEL_CLASS}>
+                                    New password
+                                </label>
+                                <PasswordInput
+                                    id="profile-new-password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="New password"
+                                    minLength={8}
+                                    autoComplete="new-password"
+                                    required
+                                    aria-describedby="profile-password-rules"
+                                    className="border-slate-700 bg-slate-950 text-white focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="profile-confirm-password" className={LABEL_CLASS}>
+                                    Confirm new password
+                                </label>
+                                <PasswordInput
+                                    id="profile-confirm-password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="Type it again"
+                                    minLength={8}
+                                    autoComplete="new-password"
+                                    required
+                                    aria-describedby="profile-password-rules"
+                                    className="border-slate-700 bg-slate-950 text-white focus:border-indigo-500"
+                                />
+                            </div>
                         </div>
 
-                        <div>
-                            <label htmlFor="profile-confirm-password" className="mb-2 block text-sm font-medium text-slate-300">
-                                Confirm new password
-                            </label>
-                            <PasswordInput
-                                id="profile-confirm-password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Confirm new password"
-                                minLength={8}
-                                autoComplete="new-password"
-                                required
-                                className="border-slate-700 bg-slate-950 text-white focus:border-indigo-500"
-                            />
-                        </div>
-
-                        <p className="text-xs text-slate-400">
-                            Your password must contain at least 8 characters.
-                        </p>
+                        <ul id="profile-password-rules" className="flex flex-wrap gap-x-5 gap-y-1 text-xs">
+                            <PasswordRule met={passwordLongEnough}>At least 8 characters</PasswordRule>
+                            <PasswordRule met={passwordsMatch}>Passwords match</PasswordRule>
+                        </ul>
 
                         <button
                             type="submit"
-                            disabled={changingPassword}
-                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium transition hover:bg-indigo-500 disabled:opacity-50"
+                            disabled={changingPassword || !passwordLongEnough || !passwordsMatch}
+                            className={PRIMARY_BUTTON_CLASS}
                         >
                             {changingPassword ? (
                                 <LoaderCircle size={16} className="animate-spin" />
@@ -473,8 +503,51 @@ function ProfileSettings() {
                     </form>
                 </section>
 
+                {/* Sign out */}
+                <section className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                    <div>
+                        <h2 className="font-semibold">Sign out</h2>
+                        <p className="mt-1 text-sm text-slate-400">End your session on this device.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-2.5 text-sm transition hover:bg-slate-800"
+                    >
+                        <LogOut size={16} />
+                        Sign out
+                    </button>
+                </section>
+
             </div>
         </div>
+    )
+}
+
+const SECTION_CLASS = 'mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 sm:p-6'
+const LABEL_CLASS = 'mb-2 block text-sm font-medium text-slate-300'
+const INPUT_CLASS = 'w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition hover:border-slate-600 focus:border-indigo-500'
+const PRIMARY_BUTTON_CLASS = 'flex shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-medium shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none'
+
+function SectionHeading({ id, icon, title, description }: { id: string; icon: ReactNode; title: string; description: ReactNode }) {
+    return (
+        <div className="mb-5 flex items-start gap-3">
+            <span className="mt-0.5 rounded-lg bg-indigo-500/10 p-2 text-indigo-300">{icon}</span>
+            <div className="min-w-0">
+                <h2 id={id} className="text-lg font-semibold">{title}</h2>
+                <p className="mt-0.5 break-words text-sm text-slate-400">{description}</p>
+            </div>
+        </div>
+    )
+}
+
+function PasswordRule({ met, children }: { met: boolean; children: ReactNode }) {
+    return (
+        <li className={`flex items-center gap-1.5 transition ${met ? 'text-green-400' : 'text-slate-500'}`}>
+            {met ? <Check size={14} /> : <Circle size={10} className="mx-0.5" />}
+            {children}
+            <span className="sr-only">{met ? '(done)' : '(not yet)'}</span>
+        </li>
     )
 }
 
