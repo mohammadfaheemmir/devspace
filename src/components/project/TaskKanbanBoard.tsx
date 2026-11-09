@@ -6,12 +6,8 @@ import {
     Pencil,
     type LucideIcon,
 } from 'lucide-react'
-import {
-    formatDueDate,
-    getMemberName,
-    getPriorityBadgeClasses,
-    isTaskOverdue,
-} from './taskUtils'
+import TaskMeta from './TaskMeta'
+import { getStatusAccent } from './taskUtils'
 import type { ProjectLabel, ProjectMember, Task, TaskStatus } from '../../types/app'
 import { TaskLabelList } from './LabelChip'
 
@@ -72,13 +68,13 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, upd
                         }}
                         className={`min-h-[300px] rounded-xl border p-4 transition ${dragOverColumn === column.id
                             ? 'border-indigo-500 bg-indigo-500/10'
-                            : 'border-slate-800 bg-slate-900'
+                            : 'border-slate-800 bg-slate-900/50'
                             }`}
                     >
                         <div className="mb-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Icon size={19} className={column.color} />
-                                <h3 className="font-semibold">{column.title}</h3>
+                                <Icon size={17} className={column.color} />
+                                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">{column.title}</h3>
                             </div>
                             <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
                                 {columnTasks.length}
@@ -99,37 +95,23 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, upd
                                         setDraggedTaskId(null)
                                         setDragOverColumn(null)
                                     }}
-                                    className={`rounded-lg border border-slate-700 bg-slate-950 p-4 transition hover:border-indigo-500 ${draggedTaskId === task.id ? 'opacity-40' : ''
+                                    className={`rounded-lg border border-l-4 border-slate-800 bg-slate-900 p-4 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:border-slate-600 ${getStatusAccent(task.status)} ${draggedTaskId === task.id ? 'opacity-40' : ''
                                         } ${updatingTaskIds.includes(task.id) ? 'opacity-60' : 'cursor-grab active:cursor-grabbing'}`}
                                 >
-                                    <h4 className="break-words font-medium text-slate-100">{task.title}</h4>
+                                    <h4 className={`break-words font-medium ${task.status === 'done' ? 'text-slate-400 line-through decoration-slate-600' : 'text-slate-100'}`}>
+                                        {task.title}
+                                    </h4>
                                     {task.description && (
-                                        <p className="mt-2 break-words text-sm text-slate-400">{task.description}</p>
+                                        <p className="mt-1.5 line-clamp-2 break-words text-sm text-slate-400">{task.description}</p>
+                                    )}
+                                    {(labelIdsByTask[task.id]?.length ?? 0) > 0 && (
+                                        <div className="mt-3">
+                                            <TaskLabelList labels={labels} labelIds={labelIdsByTask[task.id]} />
+                                        </div>
                                     )}
                                     <div className="mt-3">
-                                        <TaskLabelList labels={labels} labelIds={labelIdsByTask[task.id]} />
+                                        <TaskMeta task={task} members={members} />
                                     </div>
-                                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                                        <span className={`rounded-full px-2.5 py-1 text-xs capitalize ${getPriorityBadgeClasses(task.priority)}`}>
-                                            {task.priority || 'medium'} priority
-                                        </span>
-                                    </div>
-                                    {task.due_date && (
-                                        <p className={`mt-3 flex items-center gap-2 text-xs ${isTaskOverdue(task)
-                                            ? 'text-red-400'
-                                            : task.status === 'done'
-                                                ? 'text-green-400'
-                                                : 'text-slate-400'
-                                            }`}>
-                                            <Clock3 size={14} />
-                                            {isTaskOverdue(task)
-                                                ? `Overdue · ${formatDueDate(task.due_date)}`
-                                                : `Due ${formatDueDate(task.due_date)}`}
-                                        </p>
-                                    )}
-                                    <p className="mt-3 text-xs text-slate-400">
-                                        Assigned to: {task.assignee_id ? getMemberName(members, task.assignee_id) : 'Unassigned'}
-                                    </p>
                                     <select
                                         value={task.status}
                                         disabled={updatingTaskIds.includes(task.id)}
@@ -156,7 +138,7 @@ function TaskKanbanBoard({ tasks = [], members = [], onStatusChange, onEdit, upd
                             ))}
                             {columnTasks.length === 0 && (
                                 <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">
-                                    No tasks in this column
+                                    {tasks.length > 0 ? 'Drag a task here' : 'No tasks in this column'}
                                 </div>
                             )}
                         </div>

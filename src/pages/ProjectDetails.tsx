@@ -15,6 +15,10 @@ import {
     Clock3,
     Circle,
     Search,
+    List,
+    Columns3,
+    CalendarDays,
+    type LucideIcon,
 } from 'lucide-react'
 
 import { supabase } from '../lib/supabase'
@@ -47,6 +51,7 @@ import InvitationsPanel from '../components/project/InvitationsPanel'
 import TaskFilters from '../components/project/TaskFilters'
 import TaskListItem from '../components/project/TaskListItem'
 import TaskFormModal from '../components/project/TaskFormModal'
+import MemberAvatar from '../components/project/MemberAvatar'
 import {
     DEFAULT_TASK_FILTERS,
     filterAndSortTasks,
@@ -67,11 +72,24 @@ function isProjectTab(value: string | null): value is ProjectTab {
     return PROJECT_TABS.some((tab) => tab.id === value)
 }
 
-const TASK_VIEWS: { id: TaskView; label: string }[] = [
-    { id: 'list', label: 'List View' },
-    { id: 'board', label: 'Board View' },
-    { id: 'calendar', label: 'Calendar' },
+const TASK_VIEWS: { id: TaskView; label: string; icon: LucideIcon }[] = [
+    { id: 'list', label: 'List', icon: List },
+    { id: 'board', label: 'Board', icon: Columns3 },
+    { id: 'calendar', label: 'Calendar', icon: CalendarDays },
 ]
+
+// The chosen task view is remembered per browser (a convenience only, so
+// storage errors are ignored).
+const TASK_VIEW_KEY = 'devspace:taskView'
+
+function readSavedTaskView(): TaskView {
+    try {
+        const saved = localStorage.getItem(TASK_VIEW_KEY)
+        return TASK_VIEWS.some((view) => view.id === saved) ? (saved as TaskView) : 'list'
+    } catch {
+        return 'list'
+    }
+}
 
 // projectId comes from the route (see App.tsx), which only renders this page
 // when the URL contains one.
@@ -110,7 +128,16 @@ function ProjectDetails({ projectId }: { projectId: string }) {
         membersRef.current = members
         currentUserIdRef.current = currentUserId
     }, [labels, labelIdsByTask, members, currentUserId])
-    const [taskView, setTaskView] = useState<TaskView>('list')
+    const [taskView, setTaskViewState] = useState<TaskView>(readSavedTaskView)
+
+    function setTaskView(view: TaskView) {
+        setTaskViewState(view)
+        try {
+            localStorage.setItem(TASK_VIEW_KEY, view)
+        } catch {
+            // Storage blocked (e.g. private mode); the view still switches.
+        }
+    }
 
     // Current section tab, kept in the URL (?tab=team) for refreshes and links.
     const [searchParams, setSearchParams] = useSearchParams()
@@ -749,14 +776,17 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                         >
                             <span className="flex -space-x-2">
                                 {members.slice(0, 5).map((member) => (
-                                    <span
+                                    <MemberAvatar
                                         key={member.user_id}
-                                        title={member.full_name}
-                                        className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-900 bg-indigo-500/80 text-xs font-semibold text-white"
-                                    >
-                                        {member.full_name.charAt(0).toUpperCase()}
-                                    </span>
+                                        member={member}
+                                        className="border-2 border-slate-900"
+                                    />
                                 ))}
+                                {members.length > 5 && (
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-900 bg-slate-700 text-xs font-semibold text-slate-200">
+                                        +{members.length - 5}
+                                    </span>
+                                )}
                             </span>
                             <span className="text-sm text-slate-400">
                                 {members.length} {members.length === 1 ? 'member' : 'members'}
@@ -876,23 +906,49 @@ function ProjectDetails({ projectId }: { projectId: string }) {
 
                 {activeTab === 'tasks' && (
                 <section role="tabpanel" id="panel-tasks" aria-labelledby="tab-tasks">
+                {tasks.length === 0 ? (
+                    // Nothing to filter or switch between yet: just invite the first task.
+                    <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 px-6 py-12 text-center">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-300">
+                            <ClipboardList size={28} />
+                        </div>
+                        <h3 className="text-lg font-semibold">No tasks yet</h3>
+                        <p className="mx-auto mt-2 max-w-sm text-sm text-slate-400">
+                            Break the project into tasks, assign them to your team and track progress here.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setShowTaskForm(true)}
+                            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500"
+                        >
+                            <Plus size={16} />
+                            Create the first task
+                        </button>
+                    </div>
+                ) : (
+                <>
                 {/* Switch between list, Kanban board and calendar views */}
                 <div className="mb-4 flex justify-end">
-                    <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-1" role="group" aria-label="Task view">
-                        {TASK_VIEWS.map((view) => (
-                            <button
-                                key={view.id}
-                                type="button"
-                                onClick={() => setTaskView(view.id)}
-                                aria-pressed={taskView === view.id}
-                                className={`rounded-md px-3 py-2 text-sm transition sm:px-4 ${taskView === view.id
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-slate-400 hover:text-white'
-                                    }`}
-                            >
-                                {view.label}
-                            </button>
-                        ))}
+                    <div className="inline-flex gap-1 rounded-xl border border-slate-800 bg-slate-900/60 p-1" role="group" aria-label="Task view">
+                        {TASK_VIEWS.map((view) => {
+                            const Icon = view.icon
+                            const selected = taskView === view.id
+                            return (
+                                <button
+                                    key={view.id}
+                                    type="button"
+                                    onClick={() => setTaskView(view.id)}
+                                    aria-pressed={selected}
+                                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition sm:px-4 ${selected
+                                        ? 'bg-indigo-600 text-white shadow'
+                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                        }`}
+                                >
+                                    <Icon size={15} />
+                                    {view.label}
+                                </button>
+                            )
+                        })}
                     </div>
                 </div>
 
@@ -906,7 +962,7 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                     labels={labels}
                 />
 
-                {/* Task list or Kanban board */}
+                {/* Task list, Kanban board or calendar */}
                 {taskView === 'calendar' ? (
                     <TaskCalendar
                         tasks={filteredTasks}
@@ -922,55 +978,40 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                         labelIdsByTask={labelIdsByTask}
                         onEdit={(task) => setEditingTaskId(task.id)}
                     />
+                ) : filteredTasks.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-700 p-10 text-center">
+                        <Search size={32} className="mx-auto mb-3 text-slate-400" />
+                        <h3 className="font-medium text-slate-200">No matching tasks</h3>
+                        <p className="mt-2 text-sm text-slate-400">Try changing your search or filters.</p>
+                        <button
+                            type="button"
+                            onClick={resetFilters}
+                            className="mt-4 text-sm font-medium text-indigo-400 hover:text-indigo-300"
+                        >
+                            Clear all filters
+                        </button>
+                    </div>
                 ) : (
-                    tasks.length === 0 ? (
-                        <div className="border border-dashed border-slate-700 rounded-2xl p-10 text-center">
-                            <ClipboardList
-                                className="mx-auto text-slate-400 mb-3"
-                                size={36}
+                    <div className="space-y-3">
+                        {filteredTasks.map((task) => (
+                            <TaskListItem
+                                key={task.id}
+                                task={task}
+                                members={members}
+                                isUpdating={updatingTaskIds.includes(task.id)}
+                                onStatusChange={handleStatusChange}
+                                onAssigneeChange={handleAssigneeChange}
+                                comments={comments}
+                                currentUserId={currentUserId}
+                                isProjectAdmin={isProjectAdmin}
+                                onEdit={() => setEditingTaskId(task.id)}
+                                labels={labels}
+                                labelIds={labelIdsByTask[task.id]}
                             />
-
-                            <h3 className="text-lg font-medium">
-                                No tasks yet
-                            </h3>
-
-                            <p className="text-slate-400 mt-2">
-                                Create your first task to get started.
-                            </p>
-                        </div>
-                    ) : filteredTasks.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-slate-700 p-10 text-center">
-                            <Search size={32} className="mx-auto mb-3 text-slate-400" />
-                            <h3 className="font-medium text-slate-200">No matching tasks</h3>
-                            <p className="mt-2 text-sm text-slate-400">Try changing your search or filters.</p>
-                            <button
-                                type="button"
-                                onClick={resetFilters}
-                                className="mt-4 text-sm font-medium text-indigo-400 hover:text-indigo-300"
-                            >
-                                Clear all filters
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {filteredTasks.map((task) => (
-                                <TaskListItem
-                                    key={task.id}
-                                    task={task}
-                                    members={members}
-                                    isUpdating={updatingTaskIds.includes(task.id)}
-                                    onStatusChange={handleStatusChange}
-                                    onAssigneeChange={handleAssigneeChange}
-                                    comments={comments}
-                                    currentUserId={currentUserId}
-                                    isProjectAdmin={isProjectAdmin}
-                                    onEdit={() => setEditingTaskId(task.id)}
-                                    labels={labels}
-                                    labelIds={labelIdsByTask[task.id]}
-                                />
-                            ))}
-                        </div>
-                    )
+                        ))}
+                    </div>
+                )}
+                </>
                 )}
 
                 </section>
