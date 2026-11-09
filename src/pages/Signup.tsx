@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import PasswordInput from '../components/PasswordInput'
 
 function Signup() {
     const { signup } = useAuth()
@@ -45,12 +46,12 @@ function Signup() {
     return (
         <div className="min-h-screen flex items-center justify-center px-4 py-10 text-white">
             <div className="w-full max-w-md">
-                <Link to="/" className="text-2xl font-bold tracking-tight">
+                <Link to="/" className="block text-center text-2xl font-bold tracking-tight">
                     Dev<span className="text-indigo-400">Space</span>
                 </Link>
 
-                <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
-                    <h1 className="text-3xl font-bold">Create your account</h1>
+                <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20 backdrop-blur sm:p-8">
+                    <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Create your account</h1>
                     <p className="mt-2 text-slate-400">
                         Start managing your projects with your team.
                     </p>
@@ -68,7 +69,7 @@ function Signup() {
                                 onChange={(e) => setFullName(e.target.value)}
                                 placeholder="Your full name"
                                 required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-indigo-400"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none transition focus:border-indigo-400"
                             />
                         </div>
 
@@ -84,7 +85,7 @@ function Signup() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="you@example.com"
                                 required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-indigo-400"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none transition focus:border-indigo-400"
                             />
                         </div>
 
@@ -92,31 +93,40 @@ function Signup() {
                             <label htmlFor="signup-password" className="mb-2 block text-sm text-slate-300">
                                 Password
                             </label>
-                            <input
+                            <PasswordInput
                                 id="signup-password"
                                 autoComplete="new-password"
-                                type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="At least 8 characters"
+                                placeholder="Create a password"
                                 minLength={8}
                                 required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-indigo-400"
+                                aria-describedby="signup-password-hint"
                             />
+                            <p
+                                id="signup-password-hint"
+                                className={`mt-2 text-xs transition ${password.length >= 8 ? 'text-green-400' : 'text-slate-400'}`}
+                            >
+                                {password.length >= 8 ? 'âœ“ ' : ''}At least 8 characters
+                            </p>
                         </div>
 
                         {error && (
-                            <p className="text-sm text-red-400">{error}</p>
+                            <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                                {error}
+                            </p>
                         )}
 
                         {message && (
-                            <p className="text-sm text-green-400">{message}</p>
+                            <p role="status" className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+                                {message}
+                            </p>
                         )}
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full rounded-lg bg-indigo-500 py-3 font-semibold transition hover:bg-indigo-600 disabled:opacity-50"
+                            className="w-full rounded-xl bg-indigo-600 py-3 font-medium shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {loading ? 'Creating account...' : 'Create account'}
                         </button>

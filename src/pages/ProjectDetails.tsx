@@ -782,6 +782,7 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                                 id={`tab-${tab.id}`}
                                 aria-selected={selected}
                                 aria-controls={`panel-${tab.id}`}
+                                aria-label={count !== null ? `${tab.label} (${count})` : undefined}
                                 onClick={() => selectTab(tab.id)}
                                 className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${selected
                                     ? 'bg-indigo-600 text-white shadow'

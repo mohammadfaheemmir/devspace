@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import PasswordInput from '../components/PasswordInput'
 
 function Login() {
     const { login } = useAuth()
@@ -32,12 +33,12 @@ function Login() {
     return (
         <div className="min-h-screen flex items-center justify-center px-4 py-10 text-white">
             <div className="w-full max-w-md">
-                <Link to="/" className="text-2xl font-bold tracking-tight">
+                <Link to="/" className="block text-center text-2xl font-bold tracking-tight">
                     Dev<span className="text-indigo-400">Space</span>
                 </Link>
 
-                <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8">
-                    <h1 className="text-3xl font-bold">Welcome back</h1>
+                <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20 backdrop-blur sm:p-8">
+                    <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Welcome back</h1>
                     <p className="mt-2 text-slate-400">
                         Login to continue to your workspace.
                     </p>
@@ -55,7 +56,7 @@ function Login() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="you@example.com"
                                 required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-indigo-400"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none transition focus:border-indigo-400"
                             />
                         </div>
 
@@ -63,26 +64,26 @@ function Login() {
                             <label htmlFor="login-password" className="mb-2 block text-sm text-slate-300">
                                 Password
                             </label>
-                            <input
+                            <PasswordInput
                                 id="login-password"
                                 autoComplete="current-password"
-                                type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Your password"
                                 required
-                                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-indigo-400"
                             />
                         </div>
 
                         {error && (
-                            <p className="text-sm text-red-400">{error}</p>
+                            <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                                {error}
+                            </p>
                         )}
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full rounded-lg bg-indigo-500 py-3 font-semibold transition hover:bg-indigo-600 disabled:opacity-50"
+                            className="w-full rounded-xl bg-indigo-600 py-3 font-medium shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {loading ? 'Logging in...' : 'Login'}
                         </button>
