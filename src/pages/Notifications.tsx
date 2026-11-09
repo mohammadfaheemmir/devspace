@@ -47,7 +47,7 @@ function Notifications() {
     ]
 
     return (
-        <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6">
+        <div className="min-h-screen px-4 py-8 text-white sm:px-6">
             <div className="mx-auto max-w-3xl">
                 <div className="mb-8 flex items-center gap-4">
                     <button

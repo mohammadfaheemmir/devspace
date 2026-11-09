@@ -6,7 +6,7 @@ import type { Tables } from '../types/database'
 import type { Project, ProjectLabel, ProjectMember, Task } from '../types/app'
 import type { ProjectInvitation } from '../lib/invitationService'
 import type { ProjectActivity } from '../lib/activityService'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
     ArrowLeft,
     Plus,
@@ -54,6 +54,19 @@ import {
 
 type TaskView = 'list' | 'board' | 'calendar'
 
+type ProjectTab = 'tasks' | 'activity' | 'team' | 'settings'
+
+const PROJECT_TABS: { id: ProjectTab; label: string }[] = [
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'team', label: 'Team' },
+    { id: 'settings', label: 'Settings' },
+]
+
+function isProjectTab(value: string | null): value is ProjectTab {
+    return PROJECT_TABS.some((tab) => tab.id === value)
+}
+
 const TASK_VIEWS: { id: TaskView; label: string }[] = [
     { id: 'list', label: 'List View' },
     { id: 'board', label: 'Board View' },
@@ -98,6 +111,15 @@ function ProjectDetails({ projectId }: { projectId: string }) {
         currentUserIdRef.current = currentUserId
     }, [labels, labelIdsByTask, members, currentUserId])
     const [taskView, setTaskView] = useState<TaskView>('list')
+
+    // Current section tab, kept in the URL (?tab=team) for refreshes and links.
+    const [searchParams, setSearchParams] = useSearchParams()
+    const tabParam = searchParams.get('tab')
+    const activeTab: ProjectTab = isProjectTab(tabParam) ? tabParam : 'tasks'
+
+    function selectTab(tab: ProjectTab) {
+        setSearchParams(tab === 'tasks' ? {} : { tab }, { replace: true })
+    }
 
     // Task search, filters and sorting.
     const [filters, setFilters] = useState(DEFAULT_TASK_FILTERS)
@@ -618,6 +640,8 @@ function ProjectDetails({ projectId }: { projectId: string }) {
         (task) => task.status === 'done'
     ).length
 
+    const completionPercent = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0
+
     const filteredTasks = filterAndSortTasks(tasks, filters, labelIdsByTask)
     const editingTask = tasks.find((task) => task.id === editingTaskId) || null
 
@@ -627,7 +651,7 @@ function ProjectDetails({ projectId }: { projectId: string }) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+            <div className="min-h-screen flex items-center justify-center text-slate-300">
                 Loading project...
             </div>
         )
@@ -635,7 +659,7 @@ function ProjectDetails({ projectId }: { projectId: string }) {
 
     if (!project) {
         return (
-            <div className="min-h-screen bg-slate-950 p-8 text-white">
+            <div className="min-h-screen p-8 text-white">
                 <p>{error || 'Project not found.'}</p>
 
                 <button
@@ -649,182 +673,210 @@ function ProjectDetails({ projectId }: { projectId: string }) {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white px-4 py-8 sm:px-6">
+        <div className="min-h-screen text-white px-4 py-8 sm:px-6">
             <div className="max-w-5xl mx-auto">
 
-                {/* Back button */}
+                {/* Back link */}
                 <button
                     onClick={() => navigate('/dashboard')}
-                    className="flex items-center gap-2 text-slate-400 hover:text-white mb-8 transition"
+                    className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
                 >
-                    <ArrowLeft size={18} />
+                    <ArrowLeft size={16} />
                     Back to dashboard
                 </button>
 
-                {/* Project header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                    <div className="min-w-0">
-                        <p className="text-sm text-indigo-400 mb-2">
-                            Project workspace
-                        </p>
+                {/* Project header with progress at a glance */}
+                <header className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 backdrop-blur sm:p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-indigo-300">
+                                Project workspace
+                            </p>
+                            <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">
+                                {project.name}
+                            </h1>
+                            <p className="mt-2 max-w-2xl break-words text-sm text-slate-400 sm:text-base">
+                                {project.description || 'No project description provided.'}
+                            </p>
+                        </div>
 
-                        <h1 className="text-2xl font-bold break-words sm:text-3xl">
-                            {project.name}
-                        </h1>
+                        <div className="flex shrink-0 items-center gap-3">
+                            <TaskReminders
+                                projectId={projectId}
+                                projectName={project.name}
+                                tasks={tasks}
+                                tasksLoaded={!loading}
+                            />
 
-                        <p className="text-slate-400 mt-2 break-words">
-                            {project.description ||
-                                'No project description provided.'}
-                        </p>
+                            <button
+                                onClick={() => setShowTaskForm(true)}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 font-medium shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500"
+                            >
+                                <Plus size={18} />
+                                Create Task
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <TaskReminders
-                            projectId={projectId}
-                            projectName={project.name}
-                            tasks={tasks}
-                            tasksLoaded={!loading}
-                        />
+                    <div className="mt-5 flex flex-col gap-4 border-t border-slate-800 pt-5 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0 flex-1 md:max-w-md">
+                            <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                                <span className="flex items-center gap-1.5 text-slate-300"><Circle size={14} className="text-slate-400" />{todoCount} to do</span>
+                                <span className="flex items-center gap-1.5 text-slate-300"><Clock3 size={14} className="text-yellow-400" />{progressCount} in progress</span>
+                                <span className="flex items-center gap-1.5 text-slate-300"><CheckCircle2 size={14} className="text-green-400" />{doneCount} done</span>
+                            </div>
+                            <div
+                                className="h-2 overflow-hidden rounded-full bg-slate-800"
+                                role="progressbar"
+                                aria-label="Tasks completed"
+                                aria-valuenow={completionPercent}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                            >
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-green-500 transition-all"
+                                    style={{ width: `${completionPercent}%` }}
+                                />
+                            </div>
+                            <p className="mt-1.5 text-xs text-slate-400">{completionPercent}% complete</p>
+                        </div>
 
                         <button
-                            onClick={() => setShowTaskForm(true)}
-                            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 px-5 py-3 rounded-xl font-medium transition"
+                            type="button"
+                            onClick={() => selectTab('team')}
+                            className="flex items-center gap-3 self-start rounded-xl px-2 py-1 text-left transition hover:bg-slate-800/60 md:self-auto"
+                            aria-label={`Team: ${members.length} ${members.length === 1 ? 'member' : 'members'}`}
                         >
-                            <Plus size={18} />
-                            Create Task
+                            <span className="flex -space-x-2">
+                                {members.slice(0, 5).map((member) => (
+                                    <span
+                                        key={member.user_id}
+                                        title={member.full_name}
+                                        className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-900 bg-indigo-500/80 text-xs font-semibold text-white"
+                                    >
+                                        {member.full_name.charAt(0).toUpperCase()}
+                                    </span>
+                                ))}
+                            </span>
+                            <span className="text-sm text-slate-400">
+                                {members.length} {members.length === 1 ? 'member' : 'members'}
+                            </span>
                         </button>
                     </div>
+                </header>
+
+                {/* Sections as tabs, so tasks are not buried under admin panels */}
+                <div
+                    role="tablist"
+                    aria-label="Project sections"
+                    className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 p-1"
+                >
+                    {PROJECT_TABS.map((tab) => {
+                        const selected = activeTab === tab.id
+                        const count = tab.id === 'tasks' ? tasks.length : tab.id === 'team' ? members.length : null
+                        return (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                role="tab"
+                                id={`tab-${tab.id}`}
+                                aria-selected={selected}
+                                aria-controls={`panel-${tab.id}`}
+                                onClick={() => selectTab(tab.id)}
+                                className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${selected
+                                    ? 'bg-indigo-600 text-white shadow'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                    }`}
+                            >
+                                {tab.label}
+                                {count !== null && (
+                                    <span className={`rounded-full px-1.5 text-xs ${selected ? 'bg-white/20' : 'bg-slate-800 text-slate-300'}`}>
+                                        {count}
+                                    </span>
+                                )}
+                            </button>
+                        )
+                    })}
                 </div>
 
-                <ProjectSettingsPanel
-                    project={project}
-                    projectId={projectId}
-                    isProjectAdmin={isProjectAdmin}
-                    onProjectChange={setProject}
-                    onError={notifyError}
-                />
-
-                {isProjectAdmin && (
-                    <LabelManager
-                        projectId={projectId}
-                        labels={labels}
-                        onLabelsChange={handleLabelsChange}
-                        onError={notifyError}
-                    />
+                {activeTab === 'activity' && (
+                    <section role="tabpanel" id="panel-activity" aria-labelledby="tab-activity">
+                        <ProjectActivityFeed
+                            activities={activities}
+                            loading={loadingActivities}
+                            error={activityError}
+                            onRefresh={refreshActivities}
+                            currentUserId={currentUserId}
+                        />
+                    </section>
                 )}
 
-                <ProjectMembersPanel
-                    projectId={projectId}
-                    members={members}
-                    currentUserId={currentUserId}
-                    isProjectOwner={isProjectOwner}
-                    isProjectAdmin={isProjectAdmin}
-                    onMembersChange={setMembers}
-                    onError={notifyError}
-                />
+                {activeTab === 'team' && (
+                    <section role="tabpanel" id="panel-team" aria-labelledby="tab-team">
+                        <ProjectMembersPanel
+                            projectId={projectId}
+                            members={members}
+                            currentUserId={currentUserId}
+                            isProjectOwner={isProjectOwner}
+                            isProjectAdmin={isProjectAdmin}
+                            onMembersChange={setMembers}
+                            onError={notifyError}
+                        />
 
-                {isProjectOwner && (
-                    <OwnershipTransferPanel
-                        projectId={projectId}
-                        members={members}
-                        currentUserId={currentUserId}
-                        isProjectOwner={isProjectOwner}
-                        onMembersChange={setMembers}
-                        onError={notifyError}
-                    />
+                        {isProjectAdmin && (
+                            <InvitationsPanel
+                                projectId={projectId}
+                                invitations={invitations}
+                                onInvitationsChange={setInvitations}
+                                onError={notifyError}
+                            />
+                        )}
+
+                        {isProjectOwner && (
+                            <OwnershipTransferPanel
+                                projectId={projectId}
+                                members={members}
+                                currentUserId={currentUserId}
+                                isProjectOwner={isProjectOwner}
+                                onMembersChange={setMembers}
+                                onError={notifyError}
+                            />
+                        )}
+                    </section>
                 )}
 
-                <ProjectDangerZone
-                    project={project}
-                    projectId={projectId}
-                    isProjectOwner={isProjectOwner}
-                    onError={notifyError}
-                />
+                {activeTab === 'settings' && (
+                    <section role="tabpanel" id="panel-settings" aria-labelledby="tab-settings">
+                        <ProjectSettingsPanel
+                            project={project}
+                            projectId={projectId}
+                            isProjectAdmin={isProjectAdmin}
+                            onProjectChange={setProject}
+                            onError={notifyError}
+                        />
 
-                {isProjectAdmin && (
-                    <InvitationsPanel
-                        projectId={projectId}
-                        invitations={invitations}
-                        onInvitationsChange={setInvitations}
-                        onError={notifyError}
-                    />
+                        {isProjectAdmin && (
+                            <LabelManager
+                                projectId={projectId}
+                                labels={labels}
+                                onLabelsChange={handleLabelsChange}
+                                onError={notifyError}
+                            />
+                        )}
+
+                        <ProjectDangerZone
+                            project={project}
+                            projectId={projectId}
+                            isProjectOwner={isProjectOwner}
+                            onError={notifyError}
+                        />
+                    </section>
                 )}
 
-                <ProjectActivityFeed
-                    activities={activities}
-                    loading={loadingActivities}
-                    error={activityError}
-                    onRefresh={refreshActivities}
-                    currentUserId={currentUserId}
-                />
-
-                {/* Task statistics */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <Circle
-                                className="text-slate-400"
-                                size={22}
-                            />
-                            <span className="text-slate-400">Todo</span>
-                        </div>
-
-                        <p className="text-3xl font-bold mt-3">
-                            {todoCount}
-                        </p>
-                    </div>
-
-                    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <Clock3
-                                className="text-blue-400"
-                                size={22}
-                            />
-                            <span className="text-slate-400">
-                                In Progress
-                            </span>
-                        </div>
-
-                        <p className="text-3xl font-bold mt-3">
-                            {progressCount}
-                        </p>
-                    </div>
-
-                    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <CheckCircle2
-                                className="text-green-400"
-                                size={22}
-                            />
-                            <span className="text-slate-400">
-                                Completed
-                            </span>
-                        </div>
-
-                        <p className="text-3xl font-bold mt-3">
-                            {doneCount}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Tasks heading */}
-                <div className="flex items-center gap-3 mb-5">
-                    <ClipboardList
-                        className="text-indigo-400"
-                        size={22}
-                    />
-
-                    <h2 className="text-xl font-semibold">
-                        Project Tasks
-                    </h2>
-
-                    <span className="text-sm text-slate-400">
-                        ({tasks.length})
-                    </span>
-                </div>
-
+                {activeTab === 'tasks' && (
+                <section role="tabpanel" id="panel-tasks" aria-labelledby="tab-tasks">
                 {/* Switch between list, Kanban board and calendar views */}
-                <div className="mb-5 flex justify-end">
+                <div className="mb-4 flex justify-end">
                     <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-1" role="group" aria-label="Task view">
                         {TASK_VIEWS.map((view) => (
                             <button
@@ -918,6 +970,9 @@ function ProjectDetails({ projectId }: { projectId: string }) {
                             ))}
                         </div>
                     )
+                )}
+
+                </section>
                 )}
 
                 {/* Create task modal */}

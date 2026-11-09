@@ -43,7 +43,7 @@ function Signup() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10 text-white">
+        <div className="min-h-screen flex items-center justify-center px-4 py-10 text-white">
             <div className="w-full max-w-md">
                 <Link to="/" className="text-2xl font-bold tracking-tight">
                     Dev<span className="text-indigo-400">Space</span>

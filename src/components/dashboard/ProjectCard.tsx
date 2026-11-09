@@ -27,7 +27,7 @@ function ProjectCard({ project, summary, onOpen }: ProjectCardProps) {
         <button
             type="button"
             onClick={onOpen}
-            className="w-full rounded-xl border border-slate-800 bg-slate-900 p-6 text-left transition hover:-translate-y-1 hover:border-indigo-500/60 hover:bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="group flex h-full w-full flex-col rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-left shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:border-indigo-500/60 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
             <div className="flex items-center justify-between">
                 <div className="rounded-lg bg-indigo-500/10 p-3 text-indigo-400">
@@ -39,7 +39,7 @@ function ProjectCard({ project, summary, onOpen }: ProjectCardProps) {
                         {role || 'Project'}
                     </span>
 
-                    <ArrowUpRight size={17} className="text-slate-400" />
+                    <ArrowUpRight size={17} className="text-slate-400 transition group-hover:text-indigo-300" />
                 </div>
             </div>
 
@@ -73,7 +73,7 @@ function ProjectCard({ project, summary, onOpen }: ProjectCardProps) {
                                 aria-label={`${project.name} progress`}
                             >
                                 <div
-                                    className="h-full rounded-full bg-green-500 transition-all"
+                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-green-500 transition-all"
                                     style={{ width: `${percentDone}%` }}
                                 />
                             </div>
@@ -84,9 +84,11 @@ function ProjectCard({ project, summary, onOpen }: ProjectCardProps) {
 
             {/* created_at is nullable; new Date(null) would show 1 Jan 1970. */}
             {project.created_at && (
-                <div className="mt-5 flex items-center gap-2 border-t border-slate-800 pt-4 text-xs text-slate-400">
-                    <CalendarDays size={14} />
-                    Created {new Date(project.created_at).toLocaleDateString()}
+                <div className="mt-auto pt-5">
+                    <div className="flex items-center gap-2 border-t border-slate-800 pt-4 text-xs text-slate-400">
+                        <CalendarDays size={14} />
+                        Created {new Date(project.created_at).toLocaleDateString()}
+                    </div>
                 </div>
             )}
         </button>

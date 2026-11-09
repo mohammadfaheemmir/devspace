@@ -28,7 +28,7 @@ function ProjectDetailsRoute() {
 
 function PageLoader() {
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+    <div className="min-h-screen flex items-center justify-center text-slate-300">
       Loading...
     </div>
   )
