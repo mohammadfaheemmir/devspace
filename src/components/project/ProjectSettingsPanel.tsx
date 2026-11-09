@@ -68,7 +68,7 @@ function ProjectSettingsPanel({ project, projectId, isProjectAdmin, onProjectCha
     }
 
     return (
-        <section className="mb-8 rounded-xl border border-slate-800 bg-slate-900 p-5">
+        <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-lg font-semibold text-white">Project Settings</h2>

@@ -8,10 +8,3 @@ export function getNotificationLink(notification: Pick<Notification, 'type' | 'p
     if (notification.project_id) return `/projects/${notification.project_id}`
     return null
 }
-
-export function formatNotificationDate(date: string | number | Date): string {
-    return new Date(date).toLocaleString([], {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    })
-}

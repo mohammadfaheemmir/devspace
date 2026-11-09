@@ -1,6 +1,6 @@
 import { Bell, Mail, MessageCircle, RefreshCw, UserPlus, type LucideIcon } from 'lucide-react'
 import type { Notification, NotificationType } from '../../types/app'
-import { formatNotificationDate } from './notificationUtils'
+import { formatFullDateTime, formatRelativeTime } from '../../lib/dates'
 
 const TYPE_ICONS: Record<NotificationType, LucideIcon> = {
     task_assigned: UserPlus,
@@ -50,9 +50,13 @@ function NotificationItem({ notification, onClick }: NotificationItemProps) {
                         </p>
                     )}
 
-                    <p className="mt-2 text-xs text-slate-400">
-                        {formatNotificationDate(notification.created_at)}
-                    </p>
+                    <time
+                        dateTime={notification.created_at}
+                        title={formatFullDateTime(notification.created_at)}
+                        className="mt-2 block text-xs text-slate-400"
+                    >
+                        {formatRelativeTime(notification.created_at)}
+                    </time>
                 </div>
             </div>
         </button>

@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { Trash2, X } from 'lucide-react'
+import { LoaderCircle, Trash2, X } from 'lucide-react'
 import { useToast } from '../../context/useToast'
 import { createTask, deleteTask, updateTask } from '../../lib/taskService'
 import { getLocalDateString } from './taskUtils'
@@ -51,7 +51,9 @@ const EMPTY_TASK_FORM: TaskForm = {
 }
 
 const inputClass =
-    'w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-indigo-500'
+    'w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 outline-none transition hover:border-slate-600 focus:border-indigo-500'
+
+const labelClass = 'mb-2 block text-sm font-medium text-slate-300'
 
 function formFromTask(task: Task): TaskForm {
     return {
@@ -184,117 +186,129 @@ function TaskFormModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
             <div
                 ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="task-form-title"
-                className="w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl p-6"
+                className="flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/40"
             >
-                <div className="flex items-center justify-between mb-6">
-                    <h2 id="task-form-title" className="text-xl font-semibold">
-                        {isEditing ? 'Edit task' : 'Create a new task'}
-                    </h2>
+                <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-6 py-5">
+                    <div>
+                        <h2 id="task-form-title" className="text-xl font-semibold tracking-tight">
+                            {isEditing ? 'Edit task' : 'Create a new task'}
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-400">
+                            {isEditing ? 'Update the details, labels and files.' : 'Add the details; you can change them later.'}
+                        </p>
+                    </div>
 
                     <button
                         type="button"
                         onClick={onClose}
                         disabled={busy}
-                        className="text-slate-400 hover:text-white disabled:opacity-50"
+                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-50"
                         aria-label="Close form"
                     >
                         <X size={20} />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label htmlFor="task-title" className="block text-sm text-slate-300 mb-2">
-                            Task title
-                        </label>
-                        <input
-                            id="task-title"
-                            type="text"
-                            name="title"
-                            value={taskForm.title}
-                            onChange={handleInputChange}
-                            placeholder="e.g. Design the login page"
-                            maxLength={200}
-                            required
-                            className={inputClass}
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="task-description" className="block text-sm text-slate-300 mb-2">
-                            Description
-                        </label>
-                        <textarea
-                            id="task-description"
-                            name="description"
-                            value={taskForm.description}
-                            onChange={handleInputChange}
-                            placeholder="Describe what needs to be done..."
-                            rows={3}
-                            maxLength={2000}
-                            className={`${inputClass} resize-none`}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+                    <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
                         <div>
-                            <label htmlFor="task-priority" className="block text-sm text-slate-300 mb-2">
-                                Priority
+                            <label htmlFor="task-title" className={labelClass}>
+                                Task title
                             </label>
-                            <select
-                                id="task-priority"
-                                name="priority"
-                                value={taskForm.priority}
+                            <input
+                                id="task-title"
+                                type="text"
+                                name="title"
+                                value={taskForm.title}
                                 onChange={handleInputChange}
+                                placeholder="e.g. Design the login page"
+                                maxLength={200}
+                                required
                                 className={inputClass}
-                            >
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
+                            />
                         </div>
 
                         <div>
-                            <label htmlFor="task-assignee" className="block text-sm text-slate-300 mb-2">
-                                Assign to
+                            <label htmlFor="task-description" className={labelClass}>
+                                Description
                             </label>
-                            <select
-                                id="task-assignee"
-                                name="assignee_id"
-                                value={taskForm.assignee_id}
+                            <textarea
+                                id="task-description"
+                                name="description"
+                                value={taskForm.description}
                                 onChange={handleInputChange}
-                                className={inputClass}
-                            >
-                                <option value="">Unassigned</option>
-                                {members.map((member) => (
-                                    <option key={member.user_id} value={member.user_id}>
-                                        {member.full_name}
-                                    </option>
-                                ))}
-                            </select>
+                                placeholder="Describe what needs to be done..."
+                                rows={3}
+                                maxLength={2000}
+                                className={`${inputClass} resize-y`}
+                            />
                         </div>
-                    </div>
 
-                    {task && (
-                        <TaskAttachments
-                            projectId={projectId}
-                            taskId={task.id}
-                            currentUserId={currentUserId}
-                            isProjectAdmin={isProjectAdmin}
-                            taskCreatedBy={task.created_by}
-                            onError={onError}
-                        />
-                    )}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div>
+                                <label htmlFor="task-priority" className={labelClass}>
+                                    Priority
+                                </label>
+                                <select
+                                    id="task-priority"
+                                    name="priority"
+                                    value={taskForm.priority}
+                                    onChange={handleInputChange}
+                                    className={inputClass}
+                                >
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
 
-                    {labels.length > 0 && (
+                            <div>
+                                <label htmlFor="task-assignee" className={labelClass}>
+                                    Assign to
+                                </label>
+                                <select
+                                    id="task-assignee"
+                                    name="assignee_id"
+                                    value={taskForm.assignee_id}
+                                    onChange={handleInputChange}
+                                    className={inputClass}
+                                >
+                                    <option value="">Unassigned</option>
+                                    {members.map((member) => (
+                                        <option key={member.user_id} value={member.user_id}>
+                                            {member.full_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label htmlFor="task-due-date" className={labelClass}>
+                                    Due date (optional)
+                                </label>
+                                <input
+                                    id="task-due-date"
+                                    type="date"
+                                    name="due_date"
+                                    value={taskForm.due_date || ''}
+                                    onChange={handleInputChange}
+                                    // New tasks cannot be due in the past; existing tasks may
+                                    // already have a past date, so don't block saving them.
+                                    min={isEditing ? undefined : getLocalDateString()}
+                                    className={`${inputClass} text-slate-200 [color-scheme:dark]`}
+                                />
+                            </div>
+                        </div>
+
+                        {labels.length > 0 && (
                             <fieldset>
-                                <legend className="mb-2 block text-sm text-slate-300">Labels</legend>
+                                <legend className={labelClass}>Labels</legend>
                                 <div className="flex flex-wrap gap-2">
                                     {labels.map((label) => {
                                         const selected = selectedLabelIds.includes(label.id)
@@ -312,7 +326,7 @@ function TaskFormModal({
                                                 }
                                                 className={`rounded-full border px-3 py-1 text-xs transition ${selected
                                                     ? `${LABEL_STYLES[label.color].chip} ring-1 ring-white/40`
-                                                    : 'border-slate-700 text-slate-400 hover:text-white'
+                                                    : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
                                                     }`}
                                             >
                                                 {selected ? '✓ ' : ''}{label.name}
@@ -323,33 +337,26 @@ function TaskFormModal({
                             </fieldset>
                         )}
 
-                    <div>
-                        <label htmlFor="task-due-date" className="block text-sm text-slate-300 mb-2">
-                            Due date (optional)
-                        </label>
-                        <input
-                            id="task-due-date"
-                            type="date"
-                            name="due_date"
-                            value={taskForm.due_date || ''}
-                            onChange={handleInputChange}
-                            // New tasks cannot be due in the past; existing tasks may
-                            // already have a past date, so don't block saving them.
-                            min={isEditing ? undefined : getLocalDateString()}
-                            className={`${inputClass} text-slate-200`}
-                        />
-                        <p className="mt-2 text-xs text-slate-400">
-                            Choose the date by which this task should be completed.
-                        </p>
+                        {task && (
+                            <TaskAttachments
+                                projectId={projectId}
+                                taskId={task.id}
+                                currentUserId={currentUserId}
+                                isProjectAdmin={isProjectAdmin}
+                                taskCreatedBy={task.created_by}
+                                onError={onError}
+                            />
+                        )}
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                    {/* Footer stays visible while the fields above scroll */}
+                    <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-800 bg-slate-900 px-6 py-4">
                         {isEditing && canDelete && (
                             <button
                                 type="button"
                                 onClick={handleDelete}
                                 disabled={busy}
-                                className="mr-auto flex items-center gap-2 rounded-xl border border-red-500/40 px-4 py-3 text-sm text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+                                className="mr-auto flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
                             >
                                 <Trash2 size={16} />
                                 {deleting ? 'Deleting...' : 'Delete task'}
@@ -360,7 +367,7 @@ function TaskFormModal({
                             type="button"
                             onClick={onClose}
                             disabled={busy}
-                            className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50"
+                            className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm transition hover:bg-slate-800 disabled:opacity-50"
                         >
                             Cancel
                         </button>
@@ -368,8 +375,9 @@ function TaskFormModal({
                         <button
                             type="submit"
                             disabled={busy}
-                            className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                         >
+                            {saving && <LoaderCircle size={16} className="animate-spin" />}
                             {saving
                                 ? (isEditing ? 'Saving...' : 'Creating...')
                                 : (isEditing ? 'Save changes' : 'Create Task')}

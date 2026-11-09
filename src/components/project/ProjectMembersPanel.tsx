@@ -7,10 +7,9 @@ import {
     removeProjectMember,
     updateProjectMemberRole,
 } from '../../lib/projectMemberService'
-import {
-    Users,
-    UserRound,
-} from 'lucide-react'
+import { Users } from 'lucide-react'
+import MemberAvatar from './MemberAvatar'
+import { ROLE_BADGE } from './roleStyles'
 
 // List project members with role changes and removal.
 type ProjectMembersPanelProps = {
@@ -94,7 +93,7 @@ function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner
     }
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8">
+        <div className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 sm:p-6">
             <div className="flex items-center gap-3 mb-4">
                 <Users className="text-indigo-400" size={22} />
 
@@ -102,8 +101,8 @@ function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner
                     Project Members
                 </h2>
 
-                <span className="text-sm text-slate-400">
-                    ({members.length})
+                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
+                    {members.length}
                 </span>
             </div>
 
@@ -112,33 +111,28 @@ function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner
                     No project members found.
                 </p>
             ) : (
-                <div className="flex flex-wrap gap-3">
+                <ul className="divide-y divide-slate-800 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/50">
                     {members.map((member) => (
-                        <div
+                        <li
                             key={member.user_id}
                             // Wraps so the role/remove buttons move to a second line on phones.
-                            className="flex w-full flex-wrap items-center gap-3 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 sm:w-auto"
+                            className="flex flex-wrap items-center gap-3 px-4 py-3"
                         >
-                            {member.avatar_url ? (
-                                <img
-                                    src={member.avatar_url}
-                                    alt=""
-                                    className="w-9 h-9 rounded-full object-cover"
-                                />
-                            ) : (
-                                <div className="w-9 h-9 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center">
-                                    <UserRound size={18} />
-                                </div>
-                            )}
+                            <MemberAvatar member={member} />
 
-                            <div className="min-w-0 flex-1 sm:flex-none">
-                                <p className="text-sm font-medium break-words">
-                                    {member.full_name}
+                            <div className="min-w-0 flex-1">
+                                <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                                    <span className="break-words">{member.full_name}</span>
+                                    {member.user_id === currentUserId && (
+                                        <span className="rounded-full bg-slate-800 px-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-300">
+                                            You
+                                        </span>
+                                    )}
                                 </p>
 
-                                <p className="text-xs text-slate-400 capitalize">
+                                <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs capitalize ${ROLE_BADGE[member.role] ?? ROLE_BADGE.member}`}>
                                     {member.role}
-                                </p>
+                                </span>
                             </div>
 
                             {isProjectOwner && member.user_id !== currentUserId && member.role !== 'owner' && (
@@ -174,9 +168,9 @@ function ProjectMembersPanel({ projectId, members, currentUserId, isProjectOwner
                                     </button>
                                 )
                             )}
-                        </div>
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
         </div>
     )

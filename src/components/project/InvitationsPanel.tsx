@@ -76,7 +76,7 @@ function InvitationsPanel({ projectId, invitations, onInvitationsChange, onError
     }
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8">
+        <div className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 sm:p-6">
             <div className="flex items-center gap-3 mb-5">
                 <Mail className="text-indigo-400" size={22} />
 

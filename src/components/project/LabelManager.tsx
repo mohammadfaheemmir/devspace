@@ -55,7 +55,7 @@ function LabelManager({ projectId, labels, onLabelsChange, onError }: LabelManag
     }
 
     return (
-        <section className="mb-8 rounded-xl border border-slate-800 bg-slate-900 p-5">
+        <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 sm:p-6">
             <div className="mb-4 flex items-center gap-3">
                 <Tag className="text-indigo-400" size={22} />
                 <div>
