@@ -68,7 +68,7 @@ function OwnershipTransferPanel({ projectId, members, currentUserId, isProjectOw
     }
 
     return (
-        <section className="mb-8 rounded-xl border border-amber-500/20 bg-slate-900 p-5">
+        <section className="mb-6 rounded-2xl border border-amber-500/20 bg-slate-900/70 p-5 shadow-xl shadow-black/20 sm:p-6">
             <div className="mb-4">
                 <h3 className="font-semibold text-white">
                     Transfer Project Ownership

@@ -4,6 +4,7 @@ import { MessageCircle, Pencil, Send, Trash2, UserRound } from 'lucide-react'
 // Toggleable comment thread for one task, driven by useTaskComments().
 import type { TaskCommentsApi } from '../../hooks/useTaskComments'
 import type { TaskComment } from '../../lib/commentService'
+import { formatFullDateTime, formatRelativeTime } from '../../lib/dates'
 
 type TaskCommentsProps = {
     taskId: string
@@ -103,9 +104,13 @@ function TaskComments({ taskId, comments, currentUserId, isProjectAdmin }: TaskC
                                                     <p className="text-sm font-medium">{comment.author_name}</p>
                                                     {/* created_at is nullable; new Date(null) would show 1 Jan 1970. */}
                                                     {comment.created_at && (
-                                                        <span className="text-xs text-slate-400">
-                                                            {new Date(comment.created_at).toLocaleString()}
-                                                        </span>
+                                                        <time
+                                                            dateTime={comment.created_at}
+                                                            title={formatFullDateTime(comment.created_at)}
+                                                            className="text-xs text-slate-400"
+                                                        >
+                                                            {formatRelativeTime(comment.created_at)}
+                                                        </time>
                                                     )}
                                                 </div>
 

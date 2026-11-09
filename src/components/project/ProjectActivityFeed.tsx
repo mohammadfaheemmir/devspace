@@ -1,7 +1,7 @@
 import type { ProjectActivity } from '../../lib/activityService'
+import { formatDayHeading, formatFullDateTime, formatRelativeTime } from '../../lib/dates'
 import {
     ClipboardList,
-    UserRound,
     Mail,
     MessageCircle,
     Activity,
@@ -59,6 +59,27 @@ function getActivityColor(type: string) {
     }
 }
 
+type DayGroup = { key: string; heading: string; items: ProjectActivity[] }
+
+// Consecutive activities on the same local calendar day share a heading.
+function groupByDay(activities: ProjectActivity[]): DayGroup[] {
+    const groups: DayGroup[] = []
+
+    for (const item of activities) {
+        const date = new Date(item.created_at)
+        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+        const last = groups[groups.length - 1]
+
+        if (last && last.key === key) {
+            last.items.push(item)
+        } else {
+            groups.push({ key, heading: formatDayHeading(date), items: [item] })
+        }
+    }
+
+    return groups
+}
+
 // Timeline of recent project activity with a manual refresh button.
 type ProjectActivityFeedProps = {
     activities: ProjectActivity[]
@@ -70,7 +91,7 @@ type ProjectActivityFeedProps = {
 
 function ProjectActivityFeed({ activities, loading, error, onRefresh, currentUserId }: ProjectActivityFeedProps) {
     return (
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8">
+        <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                 <div className="flex items-center gap-3">
                     <Activity
@@ -139,71 +160,58 @@ function ProjectActivityFeed({ activities, loading, error, onRefresh, currentUse
                     </p>
                 </div>
             ) : (
-                <div className="relative">
-                    <div className="absolute left-[17px] top-5 bottom-5 w-px bg-slate-800" />
+                // Grouped by day, newest first (the order the service returns).
+                <div className="space-y-6">
+                    {groupByDay(activities).map((group) => (
+                        <div key={group.key}>
+                            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                {group.heading}
+                            </h3>
 
-                    <div className="space-y-5">
-                        {activities.map((item) => (
-                            <div
-                                key={item.id}
-                                className="relative flex gap-4"
-                            >
-                                <div
-                                    className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${getActivityColor(
-                                        item.activity_type
-                                    )}`}
-                                >
-                                    {getActivityIcon(
-                                        item.activity_type
-                                    )}
-                                </div>
+                            <ol className="relative space-y-4">
+                                <div aria-hidden="true" className="absolute bottom-4 left-[17px] top-4 w-px bg-slate-800" />
 
-                                <div className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 p-4">
-                                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                                        {item.actor_avatar ? (
-                                            <img
-                                                src={item.actor_avatar}
-                                                alt=""
-                                                className="h-6 w-6 rounded-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-slate-400">
-                                                <UserRound size={13} />
+                                {group.items.map((item) => (
+                                    <li key={item.id} className="relative flex gap-3">
+                                        <div
+                                            className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-4 ring-slate-900 ${getActivityColor(item.activity_type)}`}
+                                        >
+                                            {getActivityIcon(item.activity_type)}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1 pt-1">
+                                            <p className="break-words text-sm leading-6 text-slate-300">
+                                                {/* "Joined" descriptions already start with the member's name. */}
+                                                {item.activity_type !== 'member_joined' && (
+                                                    <>
+                                                        <span className="font-medium text-white">
+                                                            {item.actor_id === currentUserId ? 'You' : item.actor_name || 'A team member'}
+                                                        </span>
+                                                        <span className="text-slate-500"> · </span>
+                                                    </>
+                                                )}
+                                                {item.description}
+                                            </p>
+
+                                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+                                                <time dateTime={item.created_at} title={formatFullDateTime(item.created_at)}>
+                                                    {formatRelativeTime(item.created_at)}
+                                                </time>
+
+                                                {/* Skip the task tag when the description already names it. */}
+                                                {item.task_title && !item.description.includes(item.task_title) && (
+                                                    <span className="inline-flex min-w-0 items-center gap-1 text-indigo-300">
+                                                        <ListTodo size={12} className="shrink-0" />
+                                                        <span className="truncate">{item.task_title}</span>
+                                                    </span>
+                                                )}
                                             </div>
-                                        )}
-
-                                        <span className="text-sm font-medium text-slate-200">
-                                            {item.actor_name ||
-                                                'A team member'}
-                                        </span>
-
-                                        {item.actor_id ===
-                                            currentUserId && (
-                                                <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs text-indigo-300">
-                                                    You
-                                                </span>
-                                            )}
-                                    </div>
-
-                                    <p className="text-sm leading-6 text-slate-300 break-words">
-                                        {item.description}
-                                    </p>
-
-                                    {item.task_title && (
-                                        <p className="mt-2 text-xs text-indigo-300">
-                                            Task: {item.task_title}
-                                        </p>
-                                    )}
-
-                                    <p className="mt-3 text-xs text-slate-400">
-                                        {new Date(
-                                            item.created_at
-                                        ).toLocaleString()}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ol>
+                        </div>
+                    ))}
                 </div>
             )}
         </section>

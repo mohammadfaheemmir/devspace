@@ -1,12 +1,7 @@
 import { ArrowUpRight, CalendarDays, FolderKanban } from 'lucide-react'
-import type { Project, ProjectRole } from '../../types/app'
+import type { Project } from '../../types/app'
 import type { ProjectSummary } from '../../lib/projectService'
-
-const ROLE_STYLES: Record<ProjectRole, string> = {
-    owner: 'bg-amber-500/10 text-amber-400',
-    admin: 'bg-purple-500/10 text-purple-400',
-    member: 'bg-indigo-500/10 text-indigo-400',
-}
+import { ROLE_BADGE as ROLE_STYLES } from '../project/roleStyles'
 
 // Dashboard card for one project: your role, task progress and created date.
 // `summary` may be undefined while it loads (or if it failed to load).

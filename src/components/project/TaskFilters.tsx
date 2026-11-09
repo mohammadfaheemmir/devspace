@@ -25,7 +25,7 @@ function TaskFilters({ filters, onChange, onReset, members, shownCount, totalCou
     }
 
     return (
-        <section className="mb-5 rounded-2xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+        <section className="mb-5 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
             <div className="mb-4 flex items-center gap-2 text-slate-300">
                 <SlidersHorizontal size={18} className="text-indigo-400" />
                 <h3 className="text-sm font-semibold">Find and organise tasks</h3>

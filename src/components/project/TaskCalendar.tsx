@@ -14,7 +14,7 @@ import {
 const MAX_VISIBLE_PER_DAY = 3
 
 const STATUS_STYLES: Record<TaskStatus, string> = {
-    todo: 'border-indigo-500/40 bg-indigo-500/10 text-indigo-200',
+    todo: 'border-slate-500/50 bg-slate-500/15 text-slate-200',
     in_progress: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200',
     done: 'border-green-500/30 bg-green-500/10 text-green-300 line-through decoration-green-500/60',
 }
@@ -93,7 +93,7 @@ function TaskCalendar({ tasks, onEdit }: TaskCalendarProps) {
     }
 
     return (
-        <section aria-label={`Task calendar, ${monthLabel}`} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <section aria-label={`Task calendar, ${monthLabel}`} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-black/20 sm:p-5">
             {/* Month navigation */}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="flex items-center gap-2 text-lg font-semibold" aria-live="polite">
@@ -149,7 +149,7 @@ function TaskCalendar({ tasks, onEdit }: TaskCalendarProps) {
                                 key={day.key}
                                 role="group"
                                 aria-label={`${formatLongDate(day.key)}, ${dayTasks.length} ${dayTasks.length === 1 ? 'task' : 'tasks'}`}
-                                className={`min-h-28 space-y-1 p-1.5 ${day.inMonth ? 'bg-slate-950' : 'bg-slate-950/60'}`}
+                                className={`min-h-28 space-y-1 p-1.5 ${isToday ? 'bg-indigo-950/40' : day.inMonth ? 'bg-slate-950' : 'bg-slate-950/60'}`}
                             >
                                 <span
                                     className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${isToday
@@ -203,7 +203,7 @@ function TaskCalendar({ tasks, onEdit }: TaskCalendarProps) {
 
             {/* Legend and undated tasks */}
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-indigo-500/60" />To do</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-slate-500/70" />To do</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-yellow-500/60" />In progress</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-green-500/60" />Done</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-red-500/70" />Overdue</span>

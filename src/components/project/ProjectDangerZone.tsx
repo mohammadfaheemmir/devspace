@@ -84,7 +84,7 @@ function ProjectDangerZone({ project, projectId, isProjectOwner, onError }: Proj
         <>
             {/* Leave project - available to admins and members, not the owner. */}
             {!isProjectOwner && (
-                <div className="mb-8 flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/20 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                     <div>
                         <h3 className="font-semibold text-white">Leave Project</h3>
                         <p className="mt-1 text-sm text-slate-400">Leave this workspace and lose access to its tasks and project activity.</p>
@@ -101,12 +101,12 @@ function ProjectDangerZone({ project, projectId, isProjectOwner, onError }: Proj
             )}
 
             {isProjectOwner && (
-                <p className="mb-8 text-sm text-slate-400">To leave this project, transfer ownership first.</p>
+                <p className="mb-6 text-sm text-slate-400">To leave this project, transfer ownership first.</p>
             )}
 
             {/* Delete project - current owner only. Database RLS enforces this too. */}
             {isProjectOwner && (
-                <section className="mb-8 flex flex-col gap-3 rounded-xl border border-red-500/30 bg-red-950/20 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-red-500/30 bg-red-950/20 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                     <div>
                         <h3 className="font-semibold text-red-200">Delete Project</h3>
                         <p className="mt-1 text-sm text-slate-400">
